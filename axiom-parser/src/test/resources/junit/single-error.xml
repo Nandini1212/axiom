@@ -1,0 +1,5 @@
+<testsuite name="UserServiceTest">
+  <testcase name="shouldConnect" classname="com.example.UserServiceTest" time="0.1">
+    <error message="Unexpected exception">java.lang.NullPointerException</error>
+  </testcase>
+</testsuite>

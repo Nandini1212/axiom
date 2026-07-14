@@ -18,8 +18,9 @@ vertically before starting the parser.
 4. `RuleEngine` (`axiom-classifier`) — done
 5. `DeterministicStrategy` (`axiom-classifier`) — done. Deterministic classification vertical
    (`FailureEvent` -> `ClassificationResult`) is now complete end to end.
-6. `axiom-parser` (JUnit/TestNG -> `FailureEvent`) — next
-7. `axiom-analyzer` (Claude integration)
+6. `axiom-parser` (JUnit XML -> `FailureEvent`) — done. TestNG support is a separate future
+   `Parser` implementation, not yet built.
+7. `axiom-analyzer` (Claude integration) — next
 8. `axiom-reporting` (Markdown/HTML/JSON)
 9. `axiom-github` (PR comments, workflow summary)
 

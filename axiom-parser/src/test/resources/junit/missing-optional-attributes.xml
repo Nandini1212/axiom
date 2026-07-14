@@ -1,0 +1,5 @@
+<testsuite name="UserServiceTest">
+  <testcase name="shouldReturnUser" classname="com.example.UserServiceTest">
+    <failure>stack only, no message attribute, no time on testcase, no timestamp on suite</failure>
+  </testcase>
+</testsuite>

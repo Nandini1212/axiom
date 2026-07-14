@@ -1,0 +1,3 @@
+<testsuite name="UserServiceTest">
+  <testcase name="shouldPass" classname="com.example.UserServiceTest" time="0.1"/>
+</testsuite>

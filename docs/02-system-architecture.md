@@ -52,17 +52,19 @@ there; this section is the canonical short reference for every module.
 
 ### axiom-parser
 - **Purpose** — convert raw test-report formats into `FailureEvent`.
-- **Responsibilities** — parsing JUnit XML and TestNG XML.
+- **Responsibilities** — parsing JUnit XML (TestNG XML is a future, separate `Parser`
+  implementation, not yet built).
 - **Non-responsibilities** — no classification, no normalization decisions beyond what
   `FailureEvent`'s own constructor already enforces. Does not know about rules, AI, or reporting.
-- **Inputs** — JUnit XML files, TestNG XML files.
-- **Outputs** — `FailureEvent` instances (axiom-common).
+  Does not enrich `pipelineContext` (no CI/repo/branch info exists in a test report XML itself).
+- **Inputs** — a JUnit XML document (`InputStream`).
+- **Outputs** — `ParserResult` (successfully parsed `FailureEvent`s, plus recoverable
+  `ParserWarning`s for records it couldn't fully understand).
 - **Dependencies** — axiom-common.
 - **Interfaces** — `Parser`.
-- **Extension points** — a new source format (a future CI system's native report) is a new
-  `Parser` implementation; no other module changes (see ADR-0003).
-- **Status** — not yet built. Deliberately deferred until the deterministic classifier vertical
-  (`axiom-classifier`) is complete — see ADR-0006.
+- **Extension points** — a new source format (TestNG, pytest, a future CI system's native report)
+  is a new `Parser` implementation; no other module changes (see ADR-0003).
+- **Status** — built (JUnit XML only). See `10-parser.md`.
 
 ### axiom-classifier
 - **Purpose** — deterministic root-cause classification of a `FailureEvent`.

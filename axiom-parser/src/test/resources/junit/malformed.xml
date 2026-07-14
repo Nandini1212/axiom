@@ -1,0 +1,4 @@
+<testsuite name="Broken">
+  <testcase name="test1" classname="com.example.Broken">
+    <failure message="oops">stack</failure>
+  </testcase>

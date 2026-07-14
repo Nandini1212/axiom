@@ -1,0 +1,8 @@
+<testsuite name="UserServiceTest">
+  <testcase name="testA" classname="com.example.UserServiceTest" time="0.1">
+    <failure message="A failed">stack A</failure>
+  </testcase>
+  <testcase name="testB" classname="com.example.UserServiceTest" time="0.2">
+    <failure message="B failed">stack B</failure>
+  </testcase>
+</testsuite>

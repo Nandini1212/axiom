@@ -1,0 +1,5 @@
+dependencies {
+    // JUnitXmlParser produces FailureEvent; XML parsing itself uses the JDK's built-in
+    // javax.xml.parsers/org.w3c.dom (java.xml module), so no external XML dependency is needed.
+    implementation project(':axiom-common')
+}

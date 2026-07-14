@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE testsuite [
+  <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<testsuite name="Evil">
+  <testcase name="test1" classname="com.example.Evil">
+    <failure message="&xxe;">stack</failure>
+  </testcase>
+</testsuite>

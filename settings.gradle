@@ -2,9 +2,9 @@ rootProject.name = 'axiom'
 
 include 'axiom-common'
 include 'axiom-classifier'
+include 'axiom-parser'
 
 // Future modules, added as each is implemented and reviewed:
-// include 'axiom-parser'
 // include 'axiom-analyzer'
 // include 'axiom-github'
 // include 'axiom-reporting'

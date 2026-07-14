@@ -1,0 +1,12 @@
+<testsuites>
+  <testsuite name="SuiteA">
+    <testcase name="testA" classname="com.example.A" time="0.1">
+      <failure message="A failed">stack A</failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="SuiteB">
+    <testcase name="testB" classname="com.example.B" time="0.1">
+      <failure message="B failed">stack B</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

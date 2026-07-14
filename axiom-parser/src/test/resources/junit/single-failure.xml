@@ -1,0 +1,5 @@
+<testsuite name="UserServiceTest" timestamp="2026-07-13T10:00:00">
+  <testcase name="shouldReturnUser" classname="com.example.UserServiceTest" time="0.34">
+    <failure message="Connection refused">java.net.ConnectException: Connection refused</failure>
+  </testcase>
+</testsuite>

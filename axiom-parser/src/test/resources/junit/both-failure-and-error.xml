@@ -1,0 +1,6 @@
+<testsuite name="UserServiceTest">
+  <testcase name="ambiguousTest" classname="com.example.UserServiceTest" time="0.1">
+    <error message="error msg">error stack</error>
+    <failure message="failure msg">failure stack</failure>
+  </testcase>
+</testsuite>

@@ -1,0 +1,8 @@
+<testsuite name="FlakyTest" timestamp="2026-07-13T10:00:00">
+  <testcase name="loginTest" classname="com.example.LoginTest" time="0.1">
+    <failure message="Connection refused">same stack trace</failure>
+  </testcase>
+  <testcase name="loginTest" classname="com.example.LoginTest" time="0.1">
+    <failure message="Connection refused">same stack trace</failure>
+  </testcase>
+</testsuite>

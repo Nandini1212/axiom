@@ -1,0 +1,5 @@
+<testsuite name="UserServiceTest">
+  <testcase name="shouldSkipThis" classname="com.example.UserServiceTest" time="0.0">
+    <skipped message="disabled"/>
+  </testcase>
+</testsuite>

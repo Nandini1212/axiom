@@ -1,0 +1,10 @@
+<testsuite name="Outer">
+  <testsuite name="Inner">
+    <testcase name="innerTest" classname="com.example.Inner" time="0.1">
+      <failure message="inner failed">inner stack</failure>
+    </testcase>
+  </testsuite>
+  <testcase name="outerTest" classname="com.example.Outer" time="0.1">
+    <failure message="outer failed">outer stack</failure>
+  </testcase>
+</testsuite>
