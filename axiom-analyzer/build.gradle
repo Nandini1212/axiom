@@ -1,0 +1,7 @@
+dependencies {
+    // The first module that depends on both the parser and the classifier together —
+    // that's exactly its job: orchestrate them into one call.
+    implementation project(':axiom-common')
+    implementation project(':axiom-classifier')
+    implementation project(':axiom-parser')
+}

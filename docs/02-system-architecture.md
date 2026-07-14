@@ -86,17 +86,23 @@ there; this section is the canonical short reference for every module.
   See `04-rule-engine.md` and `07-roadmap.md`.
 
 ### axiom-analyzer
-- **Purpose** — explain a classification result in natural language; never classify from scratch.
-- **Responsibilities** — building a grounded prompt from `FailureEvent` + `ClassificationResult`,
-  invoking an LLM provider, returning a structured explanation.
-- **Non-responsibilities** — no classification authority — a `ClassificationResult` already
-  exists before this module runs (ADR-0001).
-- **Inputs** — `FailureEvent`, `ClassificationResult`, historical context (future).
-- **Outputs** — root cause explanation, suggested next steps, confidence explanation.
-- **Dependencies** — axiom-common, axiom-classifier.
-- **Interfaces** — `LLMProvider`.
-- **Extension points** — a new LLM vendor is a new `LLMProvider` implementation.
-- **Status** — not yet built. See `05-ai-analyzer.md`.
+- **Purpose** — orchestrate `Parser` and the classifier (`RuleEngine` + `ClassificationStrategy`)
+  into one call: report bytes in, a complete `AnalysisResult` out. Fully deterministic; AI is a
+  future enhancement to this same interface, not something this module depends on.
+- **Responsibilities** — calling `Parser.parse()`, then `RuleEngine.evaluate()` +
+  `ClassificationStrategy.classify()` per failure, and assembling the result. (Future: building a
+  grounded prompt from an `AnalyzedFailure`, invoking an LLM provider, adding explanation — see
+  `05-ai-analyzer.md`.)
+- **Non-responsibilities** — no classification authority of its own — classification already
+  happened by the time this module assembles a result (ADR-0001). Owns no rule loading or parser
+  construction; both are handed in already built.
+- **Inputs** — a report document (`InputStream`).
+- **Outputs** — `AnalysisResult` (every `AnalyzedFailure`, plus parser warnings carried through).
+- **Dependencies** — axiom-common, axiom-classifier, axiom-parser.
+- **Interfaces** — `Analyzer` (built). `LLMProvider` (future, see `05-ai-analyzer.md`).
+- **Extension points** — a future `AIEnhancedAnalyzer` implements the same `Analyzer` interface;
+  a new LLM vendor would be a new `LLMProvider` implementation.
+- **Status** — built (orchestration only; `DeterministicAnalyzer`). See `11-analyzer.md`.
 
 ### axiom-reporting
 - **Purpose** — render a classification (and, later, an AI explanation) as a presentable report.
@@ -143,8 +149,17 @@ there; this section is the canonical short reference for every module.
 - RuleProcessor
 - RuleEngine
 - ClassificationStrategy
+- Analyzer
 - LLMProvider
 - Reporter
+
+## API Conventions
+
+**`*Result` types**: every stage's result is its primary output plus whatever diagnostics or
+warnings must not be silently lost — not just the bare output type. `ParserResult(failures,
+warnings)` and `AnalysisResult(analyses, parserWarnings)` are the two instances that established
+this; treat it as the standing convention for future modules' result types (e.g. a future
+reporting/GitHub result), not something to re-decide per module.
 
 Every implementation hides behind one of these.
 

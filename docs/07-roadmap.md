@@ -20,9 +20,12 @@ vertically before starting the parser.
    (`FailureEvent` -> `ClassificationResult`) is now complete end to end.
 6. `axiom-parser` (JUnit XML -> `FailureEvent`) — done. TestNG support is a separate future
    `Parser` implementation, not yet built.
-7. `axiom-analyzer` (Claude integration) — next
-8. `axiom-reporting` (Markdown/HTML/JSON)
-9. `axiom-github` (PR comments, workflow summary)
+7. `axiom-analyzer` orchestration (`Parser` + classifier -> `AnalysisResult`, `DeterministicAnalyzer`,
+   no AI) — done. Full JUnit-XML-to-`AnalysisResult` path now exists end to end.
+8. AI-enhanced analysis (`LLMProvider`, `AIEnhancedAnalyzer`) — next, builds on the `Analyzer`
+   interface without changing it. See `05-ai-analyzer.md`.
+9. `axiom-reporting` (Markdown/HTML/JSON)
+10. `axiom-github` (PR comments, workflow summary)
 
 ## Phase 2+ (post-1.0)
 From the current architecture's own long-term vision:
@@ -34,6 +37,24 @@ From the current architecture's own long-term vision:
 - Pipeline health scoring
 - Release readiness insights
 - Engineering productivity analytics
+
+## Backlog (not urgent, tracked so they aren't forgotten)
+- **Rename `Parser`** before v1 — too generic once more parser-like things exist (`YamlParser`,
+  a future `PromptParser`, etc.). Candidates: `FailureReportParser`, `TestReportParser`. Not
+  worth a breaking rename today with only one implementation.
+- **Add `WarningType.INVALID_ATTRIBUTE`** (or similar) when a concrete need shows up — today a
+  malformed (non-numeric) `time` attribute silently becomes `null` rather than producing a
+  warning, since it doesn't cleanly fit any of the four existing `WarningType` values (see
+  `10-parser.md`'s "Known minor gap"). Low-stakes; add the value when it actually matters, not
+  preemptively.
+- ~~Watch `*Result` naming as more modules land~~ — **resolved**: formally adopted as a convention
+  now that `ParserResult` and `AnalysisResult` are both real instances of "primary output +
+  diagnostics." See `02-system-architecture.md`'s API Conventions section.
+- **Consider `AnalysisRequest` instead of bare `InputStream` for `Analyzer.analyze()`** — not for
+  v1. `InputStream` is fine while every source is effectively file-like, but a future GitHub
+  artifact API, ReportPortal-style API, or S3 object may carry source metadata that doesn't
+  naturally fit an `InputStream` alone. Keep in mind, don't build preemptively — same reasoning
+  as every other deferred abstraction on this list.
 
 ## Phase 2+ Ideas Retained From Earlier Product Exploration
 Not yet scheduled, but worth revisiting once the deterministic core (through 1.0) is proven —
