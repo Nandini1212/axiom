@@ -50,11 +50,9 @@ From the current architecture's own long-term vision:
 - ~~Watch `*Result` naming as more modules land~~ — **resolved**: formally adopted as a convention
   now that `ParserResult` and `AnalysisResult` are both real instances of "primary output +
   diagnostics." See `02-system-architecture.md`'s API Conventions section.
-- **Consider `AnalysisRequest` instead of bare `InputStream` for `Analyzer.analyze()`** — not for
-  v1. `InputStream` is fine while every source is effectively file-like, but a future GitHub
-  artifact API, ReportPortal-style API, or S3 object may carry source metadata that doesn't
-  naturally fit an `InputStream` alone. Keep in mind, don't build preemptively — same reasoning
-  as every other deferred abstraction on this list.
+- **`AnalysisRequest` instead of bare `InputStream`** — promoted to ADR candidate, see
+  `adr/0008-analysis-request-candidate.md`. Not for v1; evaluate once a second real ingestion
+  source (most likely `axiom-github`) exists to inform its shape.
 
 ## Phase 2+ Ideas Retained From Earlier Product Exploration
 Not yet scheduled, but worth revisiting once the deterministic core (through 1.0) is proven —
