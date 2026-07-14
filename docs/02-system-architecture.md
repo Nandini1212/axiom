@@ -132,16 +132,28 @@ there; this section is the canonical short reference for every module.
 - **Status** — not yet built. See `06-github-integration.md`.
 
 ### axiom-cli
-- **Purpose** — a local entry point for running Axiom outside of GitHub Actions (e.g. against a
-  local test run).
-- **Responsibilities** — wiring the other modules together behind a command-line interface.
-- **Non-responsibilities** — no business logic of its own — pure composition/wiring.
-- **Inputs** — command-line arguments, local file paths (rule files, test reports).
-- **Outputs** — console/file output via axiom-reporting.
-- **Dependencies** — all other modules.
+- **Purpose** — a local entry point for running Axiom outside of GitHub Actions: `axiom
+  <rules.yaml> <report.xml>`.
+- **Responsibilities** — constructing the concrete pipeline (`YamlRuleSource` ->
+  `DefaultRuleProcessor` -> `DefaultRuleEngine`, `DeterministicStrategy`, `JUnitXmlParser`,
+  `DeterministicAnalyzer`) and printing the resulting `AnalysisResult`. Construction and execution
+  are deliberately separated: `createAnalyzer(Path)` builds the dependency graph, `run(...)`'s
+  execution path calls only `Analyzer` — presentation code never reaches into
+  axiom-classifier/axiom-parser directly.
+- **Non-responsibilities** — no business logic of its own — pure composition/wiring. No CI-gating
+  decisions (exit code is `0` whenever analysis completes, regardless of failures found — gating
+  is explicitly deferred to a future flag/command, not this milestone). Console output is
+  deliberately temporary/inline, not a preview of `axiom-reporting`'s eventual `Reporter` design.
+- **Inputs** — command-line arguments: a rules YAML path and a report XML path.
+- **Outputs** — console text; exit `0` (analysis completed, any number of failures found), `1`
+  (execution failure — missing file, malformed YAML/XML, unexpected runtime error), `2` (invalid
+  usage).
+- **Dependencies** — axiom-common, axiom-classifier, axiom-parser, axiom-analyzer.
 - **Interfaces** — none — this is the composition root, not something else depends on it.
-- **Extension points** — n/a.
-- **Status** — not yet built.
+- **Extension points** — n/a today; a future `--fail-on <category>` flag or `axiom gate` command
+  would add CI-gating semantics without changing this milestone's default behavior.
+- **Status** — built. `./gradlew :axiom-cli:run --args="rules.yaml report.xml"` or an installable
+  `bin/axiom` script via the `application` plugin.
 
 ## Core Interfaces
 - Parser

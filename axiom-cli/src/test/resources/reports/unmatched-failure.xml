@@ -1,0 +1,5 @@
+<testsuite name="CheckoutTest">
+  <testcase name="shouldCheckout" classname="com.example.CheckoutTest" time="0.1">
+    <failure message="Something else entirely">stack</failure>
+  </testcase>
+</testsuite>

@@ -1,0 +1,17 @@
+plugins {
+    id 'application'
+}
+
+application {
+    mainClass = 'com.axiom.cli.AxiomCli'
+    applicationName = 'axiom'
+}
+
+dependencies {
+    // The composition root: wires the parser, rule loading/processing, engine, strategy, and
+    // analyzer together. Depends on every module below the still-unbuilt reporting/GitHub layer.
+    implementation project(':axiom-common')
+    implementation project(':axiom-classifier')
+    implementation project(':axiom-parser')
+    implementation project(':axiom-analyzer')
+}

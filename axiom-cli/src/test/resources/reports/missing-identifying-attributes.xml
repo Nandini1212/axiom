@@ -1,0 +1,8 @@
+<testsuite>
+  <testcase time="0.1">
+    <failure message="broken">broken stack</failure>
+  </testcase>
+  <testcase name="validTest" classname="com.example.Valid" time="0.1">
+    <failure message="Connection refused">stack</failure>
+  </testcase>
+</testsuite>

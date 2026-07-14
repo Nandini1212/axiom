@@ -1,0 +1,10 @@
+rules:
+  - id: broken
+    matche:
+      any:
+        - field: message
+          operator: contains
+          value: "x"
+    classification:
+      category: INFRASTRUCTURE_FAILURE
+      confidence: 0.5

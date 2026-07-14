@@ -22,10 +22,15 @@ vertically before starting the parser.
    `Parser` implementation, not yet built.
 7. `axiom-analyzer` orchestration (`Parser` + classifier -> `AnalysisResult`, `DeterministicAnalyzer`,
    no AI) — done. Full JUnit-XML-to-`AnalysisResult` path now exists end to end.
-8. AI-enhanced analysis (`LLMProvider`, `AIEnhancedAnalyzer`) — next, builds on the `Analyzer`
+8. `axiom-cli` (thin entry point invoking `Analyzer`, printing `AnalysisResult`) — done.
+   `axiom <rules.yaml> <report.xml>`, exit `0` on successful analysis regardless of failures
+   found, `1` on execution failure, `2` on invalid usage. Axiom is now a runnable product, not
+   just tested infrastructure — verified end to end with real rule/report files, not just unit
+   tests (matched failure, unmatched failure, and passed-only-report cases all confirmed).
+9. AI-enhanced analysis (`LLMProvider`, `AIEnhancedAnalyzer`) — next. Builds on the `Analyzer`
    interface without changing it. See `05-ai-analyzer.md`.
-9. `axiom-reporting` (Markdown/HTML/JSON)
-10. `axiom-github` (PR comments, workflow summary)
+10. `axiom-reporting` (Markdown/HTML/JSON)
+11. `axiom-github` (PR comments, workflow summary)
 
 ## Phase 2+ (post-1.0)
 From the current architecture's own long-term vision:
