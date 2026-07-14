@@ -1,8 +1,14 @@
 # Axiom
 
-Axiom is an Engineering Intelligence Platform that classifies CI/CD test failures
-deterministically — via rules, not guesses — and is designed so AI can later *explain*
-those results without ever being the thing deciding what a failure means.
+![Java 21](https://img.shields.io/badge/Java-21-orange)
+
+Modern CI pipelines often fail with many test failures at once, but engineers still spend
+significant time working out whether each one represents a real application bug, a flaky test,
+an infrastructure problem, or an environment issue — before they can even start fixing anything.
+
+Axiom is a deterministic failure intelligence platform for CI/CD: it classifies failures using
+transparent, human-authored rules first, and is designed so AI can later explain those results
+and suggest next steps — never invent the classification itself.
 
 ```text
 JUnit XML

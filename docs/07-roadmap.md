@@ -70,6 +70,14 @@ From the current architecture's own long-term vision:
 - **A bundled `default-rules.yaml`** so `axiom <report.xml>` (one argument) becomes possible —
   today's two-argument shape is the honest interface while no default ruleset is shipped with the
   application (see `12-cli.md`). Not for v1.
+- **LICENSE** — deliberately skipped for now (asked the user directly; deferred, not forgotten).
+  Revisit before any public sharing of the repo.
+- **CI build-status badge in the README** — deferred alongside the LICENSE decision: there's no
+  GitHub remote yet, so a badge URL would have to point at a repo path that doesn't exist. The
+  workflow itself (`.github/workflows/test.yml`, running `./gradlew test`) is already added and
+  will work once the repo is pushed somewhere; only the badge is waiting.
+- **An actual architecture diagram image** (not just the ASCII pipeline already in the README) —
+  explicitly a "later" polish item, not urgent.
 
 ## Phase 2+ Ideas Retained From Earlier Product Exploration
 Not yet scheduled, but worth revisiting once the deterministic core (through 1.0) is proven —
