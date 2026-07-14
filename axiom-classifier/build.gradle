@@ -1,0 +1,12 @@
+dependencies {
+    // RuleEngine evaluates PreparedRules against a real FailureEvent.
+    implementation project(':axiom-common')
+
+    // Rule definitions are authored as YAML; Jackson's YAML module reuses the same
+    // databind stack already standardized on in axiom-common rather than adding SnakeYAML.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.1'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.17.1'
+}

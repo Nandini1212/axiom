@@ -1,0 +1,10 @@
+rules:
+  - id: connection-refused
+    match:
+      any:
+        - field: message
+          operator: fuzzy-match
+          value: "Connection refused"
+    classification:
+      category: INFRASTRUCTURE_FAILURE
+      confidence: 0.95

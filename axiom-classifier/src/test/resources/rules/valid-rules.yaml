@@ -1,0 +1,28 @@
+rules:
+  - id: connection-refused
+    description: Detects failures caused by unavailable services
+    priority: 100
+    enabled: true
+    match:
+      any:
+        - field: message
+          operator: contains
+          value: "Connection refused"
+    classification:
+      category: INFRASTRUCTURE_FAILURE
+      confidence: 0.95
+    evidence:
+      message: "Dependent service unavailable"
+
+  - id: flaky-timeout-in-integration-suite
+    match:
+      all:
+        - field: suite_name
+          operator: contains
+          value: "integration"
+        - field: message
+          operator: contains
+          value: "timeout"
+    classification:
+      category: FLAKY_TEST
+      confidence: 0.6

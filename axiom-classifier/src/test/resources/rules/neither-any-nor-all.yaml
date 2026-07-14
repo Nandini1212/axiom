@@ -1,0 +1,7 @@
+rules:
+  - id: connection-refused
+    match:
+      any: []
+    classification:
+      category: INFRASTRUCTURE_FAILURE
+      confidence: 0.95
