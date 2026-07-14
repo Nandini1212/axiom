@@ -64,6 +64,11 @@ Deliberately temporary, inline presentation logic in a private method — not a 
 `axiom-reporting`'s eventual `Reporter` design, which doesn't exist yet and shouldn't be designed
 by accident through this module's throwaway console formatting.
 
+**This output is optimized for a human reading a terminal, not for machine consumption** — there
+is no `--json`/structured-output flag. A future flag can be added without redesigning
+`Analyzer`/`AnalysisResult`, since `AnalysisResult` is already the structured data; only this
+module's rendering would need a second code path.
+
 ```
 Detected 1 failure(s)
 

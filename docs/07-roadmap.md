@@ -58,6 +58,18 @@ From the current architecture's own long-term vision:
 - **`AnalysisRequest` instead of bare `InputStream`** — promoted to ADR candidate, see
   `adr/0008-analysis-request-candidate.md`. Not for v1; evaluate once a second real ingestion
   source (most likely `axiom-github`) exists to inform its shape.
+- **A tiny internal bootstrap/factory for dependency construction** — `AxiomCli.createAnalyzer`
+  wires everything manually today, which is fine at 5 concrete dependencies
+  (`YamlRuleSource`/`DefaultRuleProcessor`/`DefaultRuleEngine`/`DeterministicStrategy`/
+  `JUnitXmlParser`). Revisit once more parsers/providers/integrations exist and manual wiring
+  gets unwieldy — roughly "around the fifth or sixth new concrete dependency," not a fixed
+  number, and not Spring/Guice; something small and internal.
+- **A `--json`/structured-output flag for `axiom-cli`** — today's console output is explicitly
+  human-oriented (see `12-cli.md`). `AnalysisResult` is already structured data, so a future flag
+  only needs a second rendering path in the CLI, not a change to `Analyzer`/`AnalysisResult`.
+- **A bundled `default-rules.yaml`** so `axiom <report.xml>` (one argument) becomes possible —
+  today's two-argument shape is the honest interface while no default ruleset is shipped with the
+  application (see `12-cli.md`). Not for v1.
 
 ## Phase 2+ Ideas Retained From Earlier Product Exploration
 Not yet scheduled, but worth revisiting once the deterministic core (through 1.0) is proven —
