@@ -27,16 +27,21 @@ vertically before starting the parser.
    found, `1` on execution failure, `2` on invalid usage. Axiom is now a runnable product, not
    just tested infrastructure — verified end to end with real rule/report files, not just unit
    tests (matched failure, unmatched failure, and passed-only-report cases all confirmed).
-9. AI-enhanced analysis — **still partially done**. `AiExplanation`, `AnalyzerWarning`,
-   `LLMProvider`, `PromptBuilder`, `FakeLLMProvider`, `AIEnhancedAnalyzer`, and a real
-   `ClaudeProvider` are all built and tested. `ClaudeProvider` compiles against the actual
-   `com.anthropic:anthropic-java` SDK and its failure-wrapping path is unit-tested, but it has
-   never made a real call to Anthropic's API — no credentials were available in this environment
-   (see `05-ai-analyzer.md`). Builds on the `Analyzer` interface without changing its method
-   signature, though `AnalyzedFailure`/`AnalysisResult` did grow new fields (via secondary
-   constructors, so no existing call site broke). Remaining: `axiom-cli`'s `--ai` flag (not
-   meaningfully useful before `ClaudeProvider` has a confirmed live call) and an actual live
-   verification against the real API once credentials are available.
+9. AI-enhanced analysis — **full local AI pipeline implemented and locally verified, including
+   `axiom-cli`'s `--ai` flag.** `AiExplanation`, `AnalyzerWarning`, `LLMProvider`, `PromptBuilder`,
+   `FakeLLMProvider`, `AIEnhancedAnalyzer`, a real `ClaudeProvider`, and `axiom-cli`'s `--ai` flag
+   are all built and tested. `ClaudeProvider` is **implemented and locally verified. Pending live
+   integration testing.** — it compiles against the actual `com.anthropic:anthropic-java` SDK and
+   its failure-wrapping path is unit-tested, but it has never made a real call to Anthropic's API —
+   no credentials were available in this environment (see `05-ai-analyzer.md`). Builds on the
+   `Analyzer` interface without changing its method signature, though
+   `AnalyzedFailure`/`AnalysisResult` did grow new fields (via secondary constructors, so no
+   existing call site broke). Do not describe this as "AI flow verified end to end" until that
+   live run below actually succeeds — reserve that phrase, in contrast to the deterministic
+   pipeline above which already is complete end to end. Remaining: an actual live run of the full
+   pipeline (JUnit XML -> Parser -> Rule Engine -> Deterministic Classification -> Claude
+   Explanation -> CLI Output) against the real API once credentials are available — the
+   top-priority remaining risk before any AI-related claim of "production-ready."
 10. `axiom-reporting` (Markdown/HTML/JSON)
 11. `axiom-github` (PR comments, workflow summary)
 
@@ -94,6 +99,13 @@ From the current architecture's own long-term vision:
   is needed until a real second provider proves whether it is.
 - **`AIEnhancedAnalyzer` owning a shared `ExecutorService`** instead of creating one per failure —
   revisit if/when calls are ever parallelized. Not needed for today's sequential-per-failure calls.
+- **`LLMProviderFactory`** — `AxiomCli.wrapWithAi` currently reads env config and constructs
+  `ClaudeProvider` directly in one contained private method. Extract a factory once a second
+  provider actually exists to inform what varies (API key vs. region/role-based auth, different
+  timeout semantics, etc.) — guessing that shape today would be speculative, same reasoning as the
+  `PromptBuilder`-as-interface deferral above.
+- **`LLMConfiguration` object** instead of passing `Map<String, String> env` around — revisit
+  alongside `LLMProviderFactory` above; today it's three env lookups in one place, not sprawl.
 - **Prompt versioning** (e.g. "Prompt v3" surfaced somewhere) so a prompt-wording change that
   shifts explanation quality is traceable later. Not built yet — no concrete consumer for a
   version number until reporting/debugging actually needs to distinguish explanations by prompt

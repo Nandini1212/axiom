@@ -132,28 +132,34 @@ there; this section is the canonical short reference for every module.
 - **Status** — not yet built. See `06-github-integration.md`.
 
 ### axiom-cli
-- **Purpose** — a local entry point for running Axiom outside of GitHub Actions: `axiom
+- **Purpose** — a local entry point for running Axiom outside of GitHub Actions: `axiom [--ai]
   <rules.yaml> <report.xml>`.
 - **Responsibilities** — constructing the concrete pipeline (`YamlRuleSource` ->
   `DefaultRuleProcessor` -> `DefaultRuleEngine`, `DeterministicStrategy`, `JUnitXmlParser`,
-  `DeterministicAnalyzer`) and printing the resulting `AnalysisResult`. Construction and execution
-  are deliberately separated: `createAnalyzer(Path)` builds the dependency graph, `run(...)`'s
-  execution path calls only `Analyzer` — presentation code never reaches into
-  axiom-classifier/axiom-parser directly.
+  `DeterministicAnalyzer`, optionally wrapped in `AIEnhancedAnalyzer`/`ClaudeProvider` when `--ai`
+  is passed) and printing the resulting `AnalysisResult`. Construction and execution are
+  deliberately separated: `createAnalyzer(Path, boolean, Map<String,String>)` builds the
+  dependency graph, `run(...)`'s execution path calls only `Analyzer` — presentation code never
+  reaches into axiom-classifier/axiom-parser/axiom-analyzer's AI types directly.
 - **Non-responsibilities** — no business logic of its own — pure composition/wiring. No CI-gating
   decisions (exit code is `0` whenever analysis completes, regardless of failures found — gating
   is explicitly deferred to a future flag/command, not this milestone). Console output is
   deliberately temporary/inline, not a preview of `axiom-reporting`'s eventual `Reporter` design.
-- **Inputs** — command-line arguments: a rules YAML path and a report XML path.
+- **Inputs** — command-line arguments: an optional `--ai` flag, a rules YAML path, and a report
+  XML path. When `--ai` is passed: `AXIOM_LLM_PROVIDER` (optional, default `claude`),
+  `AXIOM_LLM_API_KEY` (required), `AXIOM_LLM_TIMEOUT_SECONDS` (optional, default 30) from the
+  environment only, never a CLI argument or committed file.
 - **Outputs** — console text; exit `0` (analysis completed, any number of failures found), `1`
-  (execution failure — missing file, malformed YAML/XML, unexpected runtime error), `2` (invalid
-  usage).
+  (execution failure — missing file, malformed YAML/XML, missing/invalid AI config, unexpected
+  runtime error), `2` (invalid usage).
 - **Dependencies** — axiom-common, axiom-classifier, axiom-parser, axiom-analyzer.
 - **Interfaces** — none — this is the composition root, not something else depends on it.
 - **Extension points** — n/a today; a future `--fail-on <category>` flag or `axiom gate` command
   would add CI-gating semantics without changing this milestone's default behavior.
-- **Status** — built. `./gradlew :axiom-cli:run --args="rules.yaml report.xml"` or an installable
-  `bin/axiom` script via the `application` plugin.
+- **Status** — built, including the `--ai` flag. `./gradlew :axiom-cli:run --args="rules.yaml
+  report.xml"` or an installable `bin/axiom` script via the `application` plugin. The AI path
+  builds a real `ClaudeProvider`, which is implemented and locally verified but has not yet made
+  a live API call in this environment — see `05-ai-analyzer.md`.
 
 ## Core Interfaces
 - Parser

@@ -1,10 +1,14 @@
 # AI-Enhanced Analysis
 
-Status: **`AIEnhancedAnalyzer`, `FakeLLMProvider`, and a real `ClaudeProvider` are all built and
-tested.** `ClaudeProvider` is compiled and unit-tested (its network-failure path verified against
-a guaranteed-unreachable local address) but has never made a real call to Anthropic's API in this
-environment — no credentials were available (see "ClaudeProvider" below). `axiom-cli`'s `--ai`
-flag is not built yet. The orchestration layer this builds on (`axiom-analyzer`'s
+Status: **Full local AI pipeline implemented and locally verified.** `AIEnhancedAnalyzer`,
+`FakeLLMProvider`, `ClaudeProvider`, and `axiom-cli`'s `--ai` flag are all built and tested.
+`ClaudeProvider` itself is **implemented and locally verified. Pending live integration testing.**
+— that is a deliberately precise distinction, not "done": compiling against the real SDK and
+unit-testing its failure-wrapping path (against a guaranteed-unreachable local address) is not the
+same claim as a successful live call to Anthropic's API, which has never happened in this
+environment (see "ClaudeProvider" below). Reserve "AI flow verified end to end" for after that
+live call succeeds — contrast with the deterministic pipeline, which is complete end to end (see
+`11-analyzer.md`). The orchestration layer this builds on (`axiom-analyzer`'s
 `Analyzer`/`AnalysisResult`/`AnalyzedFailure`, `DeterministicAnalyzer`) was built first; see
 `11-analyzer.md` for that.
 
@@ -117,31 +121,45 @@ forward-compatible this way — confirmed by reading the SDK jar's actual class 
 any response), wrapping either into `LlmExplanationException` — this call site doesn't
 differentiate retry policy, so one catch is correct.
 
-**No real API call has been made in this environment** — no `ANTHROPIC_API_KEY` and no `ant` CLI
-were available when this was built. Verified instead by: (1) compiling against the real SDK
-(`javap` was used to find the exact generic types — `StructuredMessage<T>`,
-`StructuredContentBlock<T>.text()` returning `Optional<StructuredTextBlock<T>>`,
-`StructuredTextBlock<T>.text()` returning `T` directly — rather than guessing signatures), and
-(2) a unit test that points the client at `http://127.0.0.1:1` (a reserved, immediately-refused
-port) to deterministically and quickly exercise the network-failure -> `LlmExplanationException`
-path without any real network access. A live end-to-end call against the real API is still
-unverified and should happen before this is considered production-ready.
+**Status: implemented and locally verified. Pending live integration testing.** No real API call
+has been made in this environment — no `ANTHROPIC_API_KEY` and no `ant` CLI were available when
+this was built. Verified instead by: (1) compiling against the real SDK (`javap` was used to find
+the exact generic types — `StructuredMessage<T>`, `StructuredContentBlock<T>.text()` returning
+`Optional<StructuredTextBlock<T>>`, `StructuredTextBlock<T>.text()` returning `T` directly —
+rather than guessing signatures), and (2) a unit test that points the client at
+`http://127.0.0.1:1` (a reserved, immediately-refused port) to deterministically and quickly
+exercise the network-failure -> `LlmExplanationException` path without any real network access.
+Authentication against the real API, structured-output correctness against a live model, rate
+limits, retries/backoff, and large-stack-trace token-limit behavior are all still unverified —
+none of that is implied by "locally verified," and this should not be described as
+production-ready until a live call has actually succeeded.
 
-## `axiom-cli`'s `--ai` flag — not built yet
+## `axiom-cli`'s `--ai` flag
 
-Not meaningfully usable without confidence the provider actually works end-to-end (see above).
-Planned config naming: `AXIOM_LLM_PROVIDER` + `AXIOM_LLM_API_KEY` env vars (provider-agnostic,
-not `ANTHROPIC_API_KEY` — the abstraction should hold all the way through configuration, not just
-the interface), read only from the environment, never a CLI argument or committed file. AI must
-be an explicit `--ai` opt-in, never auto-triggered by an env var happening to be set; if `--ai`
-is passed but the key is missing, that's a fail-fast usage error (exit `1`), not a silent
-fallback to deterministic-only.
+Built. `axiom [--ai] <rules.yaml> <report.xml>` — `--ai`, when present, must be the first
+argument. Config is read only from the environment, never a CLI argument or committed file:
+- `AXIOM_LLM_PROVIDER` (optional, defaults to `claude`) — provider-agnostic naming, not
+  `ANTHROPIC_API_KEY`, so the abstraction holds all the way through configuration, not just the
+  interface. An unsupported value is a fail-fast usage error (exit `1`), not a silent fallback.
+- `AXIOM_LLM_API_KEY` (required when `--ai` is passed) — missing key is a fail-fast usage error
+  (exit `1`), not a silent fallback to deterministic-only. AI is always an explicit opt-in; it is
+  never auto-triggered just because these env vars happen to be set without `--ai`.
+- `AXIOM_LLM_TIMEOUT_SECONDS` (optional, defaults to 30) — a non-numeric value is also a fail-fast
+  usage error (exit `1`).
+
+When enabled, each `AnalyzedFailure`'s AI explanation (if present) is printed beneath its
+deterministic classification: summary, root cause, suggested next steps (if any), and the
+confidence explanation. This is the concrete piece needed to run the full pipeline — JUnit XML ->
+Parser -> Rule Engine -> Deterministic Classification -> Claude Explanation -> CLI Output — end to
+end once real credentials are supplied; that live run is still pending (see above).
 
 ## Tests
-32 tests across `AiExplanationTest`, `AnalyzerWarningTest`, `PromptBuilderTest`,
-`FakeLLMProviderTest`, `AIEnhancedAnalyzerTest`, `ClaudeProviderTest`, plus updated
-`AnalyzedFailureTest`/`AnalysisResultTest`. Covers: explanation attached without altering
-classification, timeout and provider-failure fallback (both leaving classification untouched),
-per-failure isolation, a passed-only report, parser warnings still propagating through the
-AI-enhanced path, the golden-prompt/pipeline-context/truncation behaviors in `PromptBuilder`, and
-`ClaudeProvider`'s network-failure wrapping (no real API call).
+49 tests across `AiExplanationTest`, `AnalyzerWarningTest`, `PromptBuilderTest`,
+`FakeLLMProviderTest`, `AIEnhancedAnalyzerTest`, `ClaudeProviderTest`, `AnalyzedFailureTest`,
+`AnalysisResultTest`, plus 5 `--ai`-flag cases in `AxiomCliTest`. Covers: explanation attached
+without altering classification, timeout and provider-failure fallback (both leaving
+classification untouched), per-failure isolation, a passed-only report, parser warnings still
+propagating through the AI-enhanced path, the golden-prompt/pipeline-context/truncation behaviors
+in `PromptBuilder`, `ClaudeProvider`'s network-failure wrapping (no real API call), and
+`axiom-cli`'s `--ai` flag config-validation paths (missing key, unsupported provider, invalid
+timeout, successful construction without triggering a network call).

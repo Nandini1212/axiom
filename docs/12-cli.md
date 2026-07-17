@@ -19,26 +19,63 @@ enters the picture.
 
 ## Command-line shape
 
-Two positional arguments, no subcommand: `axiom <rules.yaml> <report.xml>`. Not `axiom analyze
-<report.xml>` with an implied default ruleset — Axiom cannot classify anything without rules, and
-there's no bundled default ruleset, so hiding that requirement behind a single-argument UX would
-be dishonest about what the tool needs. No subcommand either, since there's exactly one command
-today; subcommand parsing is complexity with nothing yet to justify it.
+`axiom [--ai] <rules.yaml> <report.xml>` — an optional leading `--ai` flag, then the same two
+positional arguments as before. Not `axiom analyze <report.xml>` with an implied default ruleset —
+Axiom cannot classify anything without rules, and there's no bundled default ruleset, so hiding
+that requirement behind a single-argument UX would be dishonest about what the tool needs. No
+subcommand, since there's exactly one command today; subcommand parsing is complexity with nothing
+yet to justify it. `--ai` is a flag, not a subcommand, because it toggles a behavior of the same
+single command rather than selecting a different one.
 
 ## Construction vs. execution
 
 ```java
-static Analyzer createAnalyzer(Path rulesPath) { ... }   // builds the concrete dependency graph
-static int run(String[] args, PrintStream out, PrintStream err) { ... }  // execution path
+static Analyzer createAnalyzer(Path rulesPath, boolean aiEnabled, Map<String, String> env) { ... }  // builds the concrete dependency graph
+static int run(String[] args, PrintStream out, PrintStream err) { ... }                              // execution path (delegates to the env-parameterized overload below with System.getenv())
+static int run(String[] args, PrintStream out, PrintStream err, Map<String, String> env) { ... }     // testable execution path
 ```
 
 `createAnalyzer` is the only place that knows concrete types exist
 (`YamlRuleSource`/`DefaultRuleProcessor`/`DefaultRuleEngine`/`DeterministicStrategy`/
-`JUnitXmlParser`). Once it returns an `Analyzer`, `run`'s execution path — opening the report,
-calling `analyze()`, printing the result — touches nothing from axiom-classifier or axiom-parser
+`JUnitXmlParser`, plus `ClaudeProvider`/`AIEnhancedAnalyzer` when `--ai` is passed). It always
+builds the deterministic pipeline first — so malformed rules fail before any AI-specific
+validation runs — then wraps it in `AIEnhancedAnalyzer` only if `aiEnabled` is true. Once it
+returns an `Analyzer`, `run`'s execution path — opening the report, calling `analyze()`, printing
+the result — touches nothing from axiom-classifier, axiom-parser, or axiom-analyzer's AI types
 directly. This split is also what makes `run()` unit-testable without a subprocess: it takes
-`PrintStream`s for stdout/stderr instead of touching `System.out`/`System.err` directly, so tests
-call it with capturing streams and assert on both the returned exit code and captured text.
+`PrintStream`s for stdout/stderr instead of touching `System.out`/`System.err` directly, and a
+`Map<String, String>` for environment variables instead of touching `System.getenv()` directly, so
+tests call it with capturing streams and a controlled env map and assert on both the returned exit
+code and captured text — without ever needing real credentials or touching the real process
+environment.
+
+## `--ai` flag and AI configuration
+
+When `--ai` is passed, three environment variables configure the AI layer (never a CLI argument or
+committed file, so a key never ends up in shell history or a rules file):
+
+- **`AXIOM_LLM_PROVIDER`** (optional, defaults to `claude`) — provider-agnostic naming on purpose.
+  An unsupported value is a fail-fast usage error, exit `1`.
+- **`AXIOM_LLM_API_KEY`** (required when `--ai` is passed) — missing key is a fail-fast usage
+  error, exit `1`, not a silent fallback to deterministic-only output.
+- **`AXIOM_LLM_TIMEOUT_SECONDS`** (optional, defaults to `30`) — per-failure explanation timeout
+  passed to `AIEnhancedAnalyzer`. A non-numeric value is a fail-fast usage error, exit `1`.
+
+AI is always an explicit opt-in: these env vars being set with no `--ai` flag has no effect at
+all — Axiom never silently starts making network calls because a variable happened to be present
+in the environment. When AI is enabled and a failure gets an explanation, it's printed beneath
+that failure's deterministic classification (AI Summary, AI Root Cause, AI Suggested Next Steps,
+AI Confidence Note); a failure whose explanation timed out or errored prints only the deterministic
+classification, unchanged, exactly as it would without `--ai`.
+
+This flag is the concrete last piece needed to eventually run the complete pipeline — JUnit XML ->
+Parser -> Rule Engine -> Deterministic Classification -> Claude Explanation -> CLI Output — with
+the AI flow verified end to end. **It has not done so yet.** Every run so far exercises the full
+local AI pipeline, implemented and locally verified (parsing, classification, and AI-path
+construction/config-validation); no run has included a real Claude API call, since no credentials
+exist in this environment. Reserve "AI flow verified end to end" until a live call has actually
+succeeded — see `05-ai-analyzer.md`'s `ClaudeProvider` section for exactly what "locally verified"
+does and doesn't cover here.
 
 ## Exit codes
 
@@ -86,16 +123,22 @@ case, not just the failing-report path.
 
 ## Verified end to end, not just unit-tested
 
-Beyond the 8 automated tests, the CLI was actually run via `./gradlew :axiom-cli:run` against real
+Beyond the automated tests, the CLI was actually run via `./gradlew :axiom-cli:run` against real
 rule/report files for three cases (matched failure, unmatched failure, passed-only report),
 confirming the real console output and exit codes match what the tests assert — not just that the
 assertions pass in isolation.
 
 ## Tests
 
-8 tests in `AxiomCliTest`: wrong argument count -> exit `2`; a matched failure -> exit `0` with
-category/confidence/rule id in the output; an unmatched failure -> `UNKNOWN`/`(no rule matched)`;
-a passed-only report -> `Detected 0 failure(s)`, exit `0` (the normal clean-build case); a
-nonexistent report path -> exit `1`; malformed rule YAML -> exit `1`; malformed report XML ->
-exit `1`; a report producing a parser warning -> the warning appears in the output rather than
-`Warnings: none`.
+13 tests in `AxiomCliTest`. The original 8: wrong argument count -> exit `2`; a matched failure ->
+exit `0` with category/confidence/rule id in the output; an unmatched failure ->
+`UNKNOWN`/`(no rule matched)`; a passed-only report -> `Detected 0 failure(s)`, exit `0` (the
+normal clean-build case); a nonexistent report path -> exit `1`; malformed rule YAML -> exit `1`;
+malformed report XML -> exit `1`; a report producing a parser warning -> the warning appears in
+the output rather than `Warnings: none`. Plus 5 for the `--ai` flag: missing `AXIOM_LLM_API_KEY`
+-> exit `1` naming the missing variable; an unsupported `AXIOM_LLM_PROVIDER` -> exit `1` naming
+the bad value; a non-numeric `AXIOM_LLM_TIMEOUT_SECONDS` -> exit `1`; wrong argument count with
+`--ai` still present -> exit `2` (flag parsing doesn't bypass usage validation); and a present
+API key -> `createAnalyzer` constructs successfully without throwing. That last test deliberately
+stops at construction and never calls `.analyze()` on the resulting `Analyzer`, since doing so
+would attempt a real network call to Anthropic's API — not permitted in this test suite.
