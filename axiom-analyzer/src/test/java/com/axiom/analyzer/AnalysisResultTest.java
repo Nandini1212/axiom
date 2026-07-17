@@ -24,20 +24,33 @@ class AnalysisResultTest {
     private static final ParserWarning SOME_WARNING =
         new ParserWarning(WarningType.MISSING_ATTRIBUTE, null, null, null, "detail");
 
+    private static final AnalyzerWarning SOME_ANALYZER_WARNING =
+        new AnalyzerWarning(AnalyzerWarningType.AI_TIMEOUT, "evt-1", "timed out");
+
     @Test
-    void constructsWithValidFields() {
+    void twoArgConstructorLeavesAnalyzerWarningsEmpty() {
         AnalysisResult result = new AnalysisResult(List.of(SOME_ANALYZED_FAILURE), List.of(SOME_WARNING));
 
         assertEquals(List.of(SOME_ANALYZED_FAILURE), result.analyses());
         assertEquals(List.of(SOME_WARNING), result.parserWarnings());
+        assertTrue(result.analyzerWarnings().isEmpty());
+    }
+
+    @Test
+    void threeArgConstructorCanCarryAnalyzerWarnings() {
+        AnalysisResult result = new AnalysisResult(
+            List.of(SOME_ANALYZED_FAILURE), List.of(SOME_WARNING), List.of(SOME_ANALYZER_WARNING));
+
+        assertEquals(List.of(SOME_ANALYZER_WARNING), result.analyzerWarnings());
     }
 
     @Test
     void emptyListsAreAllowed() {
-        AnalysisResult result = new AnalysisResult(List.of(), List.of());
+        AnalysisResult result = new AnalysisResult(List.of(), List.of(), List.of());
 
         assertTrue(result.analyses().isEmpty());
         assertTrue(result.parserWarnings().isEmpty());
+        assertTrue(result.analyzerWarnings().isEmpty());
     }
 
     @Test
@@ -48,6 +61,11 @@ class AnalysisResultTest {
     @Test
     void throwsWhenParserWarningsIsNull() {
         assertThrows(NullPointerException.class, () -> new AnalysisResult(List.of(), null));
+    }
+
+    @Test
+    void throwsWhenAnalyzerWarningsIsNull() {
+        assertThrows(NullPointerException.class, () -> new AnalysisResult(List.of(), List.of(), null));
     }
 
     @Test
@@ -72,5 +90,17 @@ class AnalysisResultTest {
 
         assertEquals(1, result.parserWarnings().size());
         assertThrows(UnsupportedOperationException.class, () -> result.parserWarnings().add(SOME_WARNING));
+    }
+
+    @Test
+    void analyzerWarningsAreDefensivelyCopiedAndImmutable() {
+        List<AnalyzerWarning> mutable = new ArrayList<>();
+        mutable.add(SOME_ANALYZER_WARNING);
+
+        AnalysisResult result = new AnalysisResult(List.of(), List.of(), mutable);
+        mutable.add(SOME_ANALYZER_WARNING);
+
+        assertEquals(1, result.analyzerWarnings().size());
+        assertThrows(UnsupportedOperationException.class, () -> result.analyzerWarnings().add(SOME_ANALYZER_WARNING));
     }
 }

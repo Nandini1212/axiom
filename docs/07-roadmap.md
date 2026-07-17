@@ -27,8 +27,14 @@ vertically before starting the parser.
    found, `1` on execution failure, `2` on invalid usage. Axiom is now a runnable product, not
    just tested infrastructure — verified end to end with real rule/report files, not just unit
    tests (matched failure, unmatched failure, and passed-only-report cases all confirmed).
-9. AI-enhanced analysis (`LLMProvider`, `AIEnhancedAnalyzer`) — next. Builds on the `Analyzer`
-   interface without changing it. See `05-ai-analyzer.md`.
+9. AI-enhanced analysis — **partially done**. `AiExplanation`, `AnalyzerWarning`, `LLMProvider`,
+   `PromptBuilder`, `FakeLLMProvider`, and `AIEnhancedAnalyzer` are all built and tested (against
+   the fake provider — no real LLM call made anywhere yet). Builds on the `Analyzer` interface
+   without changing its method signature, though `AnalyzedFailure`/`AnalysisResult` did grow new
+   fields (via secondary constructors, so no existing call site broke). Remaining, deliberately
+   deferred together since neither is meaningfully usable without the other: a real `LLMProvider`
+   implementation (e.g. Claude-backed, needs an actual API key and the `claude-api` reference at
+   implementation time) and `axiom-cli`'s `--ai` flag. See `05-ai-analyzer.md`.
 10. `axiom-reporting` (Markdown/HTML/JSON)
 11. `axiom-github` (PR comments, workflow summary)
 

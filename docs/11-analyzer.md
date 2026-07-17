@@ -16,10 +16,18 @@ public interface Analyzer {
     AnalysisResult analyze(InputStream report);
 }
 
-public record AnalyzedFailure(FailureEvent event, ClassificationResult classification) {}
+public record AnalyzedFailure(FailureEvent event, ClassificationResult classification, Optional<AiExplanation> explanation) {
+    public AnalyzedFailure(FailureEvent event, ClassificationResult classification) { this(event, classification, Optional.empty()); }
+}
 
-public record AnalysisResult(List<AnalyzedFailure> analyses, List<ParserWarning> parserWarnings) {}
+public record AnalysisResult(List<AnalyzedFailure> analyses, List<ParserWarning> parserWarnings, List<AnalyzerWarning> analyzerWarnings) {
+    public AnalysisResult(List<AnalyzedFailure> analyses, List<ParserWarning> parserWarnings) { this(analyses, parserWarnings, List.of()); }
+}
 ```
+
+`explanation`/`analyzerWarnings` were added for the AI-enhancement milestone (see
+`05-ai-analyzer.md`) — both records kept their original, shorter constructors as secondary,
+delegating ones specifically so no pre-existing call site had to change.
 
 `DeterministicAnalyzer implements Analyzer`, constructed with an already-built `Parser`,
 `RuleEngine`, and `ClassificationStrategy` — it owns none of their construction (no rule loading,
@@ -36,11 +44,13 @@ public AnalysisResult analyze(InputStream report) {
 }
 ```
 
-**Naming**: `DeterministicAnalyzer` is deliberately parallel to `DeterministicStrategy` — a future
-`AIEnhancedAnalyzer` (or a decorator wrapping this one) implements the same `Analyzer` interface
-and adds LLM explanation on top, exactly like `AIEnhancedStrategy` was always the planned
-counterpart to `DeterministicStrategy`. This is the seam that makes AI "an enhancement, not the
-core workflow" — the `Analyzer` interface itself doesn't change when that milestone starts.
+**Naming**: `DeterministicAnalyzer` is deliberately parallel to `DeterministicStrategy` —
+`AIEnhancedAnalyzer` (built, see `05-ai-analyzer.md`) wraps this one and adds LLM explanation on
+top. One correction to an earlier version of this note: the `ClassificationStrategy` comparison
+isn't a perfect match — an AI-enhanced `ClassificationStrategy` would return the exact same
+`ClassificationResult` shape, but AI-enhanced analysis adds genuinely new data. Keeping one
+`Analyzer` interface true required `AnalyzedFailure`/`AnalysisResult` to actually grow (above),
+not just stay conceptually compatible.
 
 **`AnalyzedFailure`**, not `FailureAnalysis` — named for the *result* of analysis, not the
 process, since it's expected to grow more fields over time (AI explanation, root cause,
