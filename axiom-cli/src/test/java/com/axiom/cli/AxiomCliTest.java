@@ -1,5 +1,6 @@
 package com.axiom.cli;
 
+import com.axiom.analyzer.Analyzer;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -9,6 +10,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,12 +30,16 @@ class AxiomCliTest {
     }
 
     private static RunResult runCli(String... args) {
+        return runCli(Map.of(), args);
+    }
+
+    private static RunResult runCli(Map<String, String> env, String... args) {
         ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
         ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(outBytes, true, StandardCharsets.UTF_8);
         PrintStream err = new PrintStream(errBytes, true, StandardCharsets.UTF_8);
 
-        int exitCode = AxiomCli.run(args, out, err);
+        int exitCode = AxiomCli.run(args, out, err, env);
 
         return new RunResult(
             exitCode,
@@ -123,5 +129,61 @@ class AxiomCliTest {
         assertTrue(result.out().contains("Detected 1 failure(s)"));
         assertTrue(result.out().contains("Warnings:"));
         assertFalse(result.out().contains("Warnings: none"));
+    }
+
+    @Test
+    void aiFlagWithoutApiKeyReturnsExitCode1WithClearMessage() {
+        RunResult result = runCli(
+            Map.of(),
+            "--ai",
+            resource("rules/connection-refused.yaml").toString(),
+            resource("reports/single-failure.xml").toString());
+
+        assertEquals(1, result.exitCode());
+        assertTrue(result.err().contains("AXIOM_LLM_API_KEY"));
+    }
+
+    @Test
+    void aiFlagWithUnsupportedProviderReturnsExitCode1WithClearMessage() {
+        RunResult result = runCli(
+            Map.of("AXIOM_LLM_PROVIDER", "not-a-real-provider", "AXIOM_LLM_API_KEY", "test-key"),
+            "--ai",
+            resource("rules/connection-refused.yaml").toString(),
+            resource("reports/single-failure.xml").toString());
+
+        assertEquals(1, result.exitCode());
+        assertTrue(result.err().contains("not-a-real-provider"));
+    }
+
+    @Test
+    void aiFlagWithInvalidTimeoutReturnsExitCode1WithClearMessage() {
+        RunResult result = runCli(
+            Map.of("AXIOM_LLM_API_KEY", "test-key", "AXIOM_LLM_TIMEOUT_SECONDS", "not-a-number"),
+            "--ai",
+            resource("rules/connection-refused.yaml").toString(),
+            resource("reports/single-failure.xml").toString());
+
+        assertEquals(1, result.exitCode());
+        assertTrue(result.err().contains("AXIOM_LLM_TIMEOUT_SECONDS"));
+    }
+
+    @Test
+    void aiFlagWithApiKeyConstructsAnalyzerWithoutMakingNetworkCall() {
+        // Deliberately does not call .analyze() on the returned Analyzer — that would attempt a
+        // real network call to Anthropic's API, which must never happen in unit tests.
+        Analyzer analyzer = AxiomCli.createAnalyzer(
+            resource("rules/connection-refused.yaml"),
+            true,
+            Map.of("AXIOM_LLM_API_KEY", "test-key"));
+
+        assertNotNull(analyzer);
+    }
+
+    @Test
+    void wrongArgumentCountWithAiFlagStillReturnsUsageErrorExitCode2() {
+        RunResult result = runCli(Map.of(), "--ai", "only-one-arg");
+
+        assertEquals(2, result.exitCode());
+        assertTrue(result.err().contains("Usage"));
     }
 }

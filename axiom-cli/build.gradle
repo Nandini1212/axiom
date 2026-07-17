@@ -14,4 +14,8 @@ dependencies {
     implementation project(':axiom-classifier')
     implementation project(':axiom-parser')
     implementation project(':axiom-analyzer')
+
+    // axiom-cli constructs the AnthropicClient itself (composition root) — axiom-analyzer's own
+    // dependency on this is `implementation`, not transitively exposed, so it's declared here too.
+    implementation 'com.anthropic:anthropic-java:2.34.0'
 }
