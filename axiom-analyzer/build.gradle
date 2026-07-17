@@ -4,4 +4,7 @@ dependencies {
     implementation project(':axiom-common')
     implementation project(':axiom-classifier')
     implementation project(':axiom-parser')
+
+    // ClaudeProvider: the one concrete LLMProvider implementation.
+    implementation 'com.anthropic:anthropic-java:2.34.0'
 }

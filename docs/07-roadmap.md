@@ -27,14 +27,16 @@ vertically before starting the parser.
    found, `1` on execution failure, `2` on invalid usage. Axiom is now a runnable product, not
    just tested infrastructure — verified end to end with real rule/report files, not just unit
    tests (matched failure, unmatched failure, and passed-only-report cases all confirmed).
-9. AI-enhanced analysis — **partially done**. `AiExplanation`, `AnalyzerWarning`, `LLMProvider`,
-   `PromptBuilder`, `FakeLLMProvider`, and `AIEnhancedAnalyzer` are all built and tested (against
-   the fake provider — no real LLM call made anywhere yet). Builds on the `Analyzer` interface
-   without changing its method signature, though `AnalyzedFailure`/`AnalysisResult` did grow new
-   fields (via secondary constructors, so no existing call site broke). Remaining, deliberately
-   deferred together since neither is meaningfully usable without the other: a real `LLMProvider`
-   implementation (e.g. Claude-backed, needs an actual API key and the `claude-api` reference at
-   implementation time) and `axiom-cli`'s `--ai` flag. See `05-ai-analyzer.md`.
+9. AI-enhanced analysis — **still partially done**. `AiExplanation`, `AnalyzerWarning`,
+   `LLMProvider`, `PromptBuilder`, `FakeLLMProvider`, `AIEnhancedAnalyzer`, and a real
+   `ClaudeProvider` are all built and tested. `ClaudeProvider` compiles against the actual
+   `com.anthropic:anthropic-java` SDK and its failure-wrapping path is unit-tested, but it has
+   never made a real call to Anthropic's API — no credentials were available in this environment
+   (see `05-ai-analyzer.md`). Builds on the `Analyzer` interface without changing its method
+   signature, though `AnalyzedFailure`/`AnalysisResult` did grow new fields (via secondary
+   constructors, so no existing call site broke). Remaining: `axiom-cli`'s `--ai` flag (not
+   meaningfully useful before `ClaudeProvider` has a confirmed live call) and an actual live
+   verification against the real API once credentials are available.
 10. `axiom-reporting` (Markdown/HTML/JSON)
 11. `axiom-github` (PR comments, workflow summary)
 
@@ -84,6 +86,21 @@ From the current architecture's own long-term vision:
   will work once the repo is pushed somewhere; only the badge is waiting.
 - **An actual architecture diagram image** (not just the ASCII pipeline already in the README) —
   explicitly a "later" polish item, not urgent.
+- **`PromptBuilder` as an interface** (with today's implementation renamed `DefaultPromptBuilder`)
+  — revisit once a second `LLMProvider` actually exists. Most of the prompt content (failure,
+  stack trace, evidence, pipeline context) is provider-independent already; only structured-output
+  transport mechanics would differ per provider, so a second provider may simply reuse
+  `PromptBuilder` unchanged rather than needing its own variant — don't assume the interface split
+  is needed until a real second provider proves whether it is.
+- **`AIEnhancedAnalyzer` owning a shared `ExecutorService`** instead of creating one per failure —
+  revisit if/when calls are ever parallelized. Not needed for today's sequential-per-failure calls.
+- **Prompt versioning** (e.g. "Prompt v3" surfaced somewhere) so a prompt-wording change that
+  shifts explanation quality is traceable later. Not built yet — no concrete consumer for a
+  version number until reporting/debugging actually needs to distinguish explanations by prompt
+  version.
+- **Provider metadata on `AiExplanation`** (provider, model, latency, tokens) — not needed by
+  `AIEnhancedAnalyzer` itself, but `axiom-reporting` will likely want it later. Deliberately kept
+  off `AiExplanation` for now; add when a concrete reporting need exists, not preemptively.
 
 ## Phase 2+ Ideas Retained From Earlier Product Exploration
 Not yet scheduled, but worth revisiting once the deterministic core (through 1.0) is proven —
