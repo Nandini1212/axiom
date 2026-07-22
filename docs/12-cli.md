@@ -65,17 +65,22 @@ AI is always an explicit opt-in: these env vars being set with no `--ai` flag ha
 all — Axiom never silently starts making network calls because a variable happened to be present
 in the environment. When AI is enabled and a failure gets an explanation, it's printed beneath
 that failure's deterministic classification (AI Summary, AI Root Cause, AI Suggested Next Steps,
-AI Confidence Note); a failure whose explanation timed out or errored prints only the deterministic
-classification, unchanged, exactly as it would without `--ai`.
+AI Confidence Note). A failure whose explanation timed out or errored prints the deterministic
+classification unchanged, plus a line naming what went wrong — `AI explanation unavailable
+(AI_TIMEOUT): ...` or `AI explanation unavailable (AI_EXPLANATION_FAILED): ...` — correlated back
+to that specific failure via `AnalyzerWarning.failureEventId`. This wasn't always true: a live
+smoke test (see below) originally found that `AnalysisResult.analyzerWarnings()` was computed but
+never printed, so these cases silently showed no AI section at all alongside a misleading
+"Warnings: none" — fixed the same day it was found.
 
-This flag is the concrete last piece needed to eventually run the complete pipeline — JUnit XML ->
-Parser -> Rule Engine -> Deterministic Classification -> Claude Explanation -> CLI Output — with
-the AI flow verified end to end. **It has not done so yet.** Every run so far exercises the full
-local AI pipeline, implemented and locally verified (parsing, classification, and AI-path
-construction/config-validation); no run has included a real Claude API call, since no credentials
-exist in this environment. Reserve "AI flow verified end to end" until a live call has actually
-succeeded — see `05-ai-analyzer.md`'s `ClaudeProvider` section for exactly what "locally verified"
-does and doesn't cover here.
+This flag is the concrete last piece needed to run the complete pipeline — JUnit XML -> Parser ->
+Rule Engine -> Deterministic Classification -> Claude Explanation -> CLI Output — and **the AI flow
+is now verified end to end (2026-07-21)**: a live `axiom --ai` run against a real key produced a
+real `AiExplanation`, with deterministic classification unchanged, and the invalid-key/timeout
+failure paths were separately confirmed live after the printing fix above. Not yet
+instrumented: exact API latency and which model version the server returned (see
+`05-ai-analyzer.md`'s "Provider metadata" backlog note), retry/backoff behavior, and
+large-stack-trace token-limit behavior.
 
 ## Exit codes
 

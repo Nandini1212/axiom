@@ -158,8 +158,8 @@ there; this section is the canonical short reference for every module.
   would add CI-gating semantics without changing this milestone's default behavior.
 - **Status** — built, including the `--ai` flag. `./gradlew :axiom-cli:run --args="rules.yaml
   report.xml"` or an installable `bin/axiom` script via the `application` plugin. The AI path
-  builds a real `ClaudeProvider`, which is implemented and locally verified but has not yet made
-  a live API call in this environment — see `05-ai-analyzer.md`.
+  builds a real `ClaudeProvider`, confirmed with a live call against the real Anthropic API
+  (2026-07-21) — see `05-ai-analyzer.md`.
 
 ## Core Interfaces
 - Parser

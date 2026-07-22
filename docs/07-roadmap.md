@@ -27,21 +27,20 @@ vertically before starting the parser.
    found, `1` on execution failure, `2` on invalid usage. Axiom is now a runnable product, not
    just tested infrastructure — verified end to end with real rule/report files, not just unit
    tests (matched failure, unmatched failure, and passed-only-report cases all confirmed).
-9. AI-enhanced analysis — **full local AI pipeline implemented and locally verified, including
-   `axiom-cli`'s `--ai` flag.** `AiExplanation`, `AnalyzerWarning`, `LLMProvider`, `PromptBuilder`,
+9. AI-enhanced analysis — **done. AI flow verified end to end against the real Anthropic API
+   (2026-07-21).** `AiExplanation`, `AnalyzerWarning`, `LLMProvider`, `PromptBuilder`,
    `FakeLLMProvider`, `AIEnhancedAnalyzer`, a real `ClaudeProvider`, and `axiom-cli`'s `--ai` flag
-   are all built and tested. `ClaudeProvider` is **implemented and locally verified. Pending live
-   integration testing.** — it compiles against the actual `com.anthropic:anthropic-java` SDK and
-   its failure-wrapping path is unit-tested, but it has never made a real call to Anthropic's API —
-   no credentials were available in this environment (see `05-ai-analyzer.md`). Builds on the
-   `Analyzer` interface without changing its method signature, though
-   `AnalyzedFailure`/`AnalysisResult` did grow new fields (via secondary constructors, so no
-   existing call site broke). Do not describe this as "AI flow verified end to end" until that
-   live run below actually succeeds — reserve that phrase, in contrast to the deterministic
-   pipeline above which already is complete end to end. Remaining: an actual live run of the full
-   pipeline (JUnit XML -> Parser -> Rule Engine -> Deterministic Classification -> Claude
-   Explanation -> CLI Output) against the real API once credentials are available — the
-   top-priority remaining risk before any AI-related claim of "production-ready."
+   are all built, tested, and now confirmed live: `axiom --ai <rules.yaml> <report.xml>` against a
+   real key produced a real `AiExplanation` via structured outputs, with the deterministic
+   category/confidence/rule unchanged. Builds on the `Analyzer` interface without changing its
+   method signature, though `AnalyzedFailure`/`AnalysisResult` did grow new fields (via secondary
+   constructors, so no existing call site broke). The live test also surfaced and fixed a real
+   defect — `axiom-cli` computed `AnalyzerWarning`s but never printed them, so an invalid key or
+   short timeout silently showed no AI section and a misleading "Warnings: none"; fixed and
+   re-verified live (see `05-ai-analyzer.md`). Still not instrumented: exact API latency and which
+   model version the server returned (no telemetry on `AiExplanation` today — see the "Provider
+   metadata" backlog item below), retry/backoff behavior, and large-stack-trace token-limit
+   behavior.
 10. `axiom-reporting` (Markdown/HTML/JSON)
 11. `axiom-github` (PR comments, workflow summary)
 

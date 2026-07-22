@@ -1,14 +1,12 @@
 # AI-Enhanced Analysis
 
-Status: **Full local AI pipeline implemented and locally verified.** `AIEnhancedAnalyzer`,
-`FakeLLMProvider`, `ClaudeProvider`, and `axiom-cli`'s `--ai` flag are all built and tested.
-`ClaudeProvider` itself is **implemented and locally verified. Pending live integration testing.**
-— that is a deliberately precise distinction, not "done": compiling against the real SDK and
-unit-testing its failure-wrapping path (against a guaranteed-unreachable local address) is not the
-same claim as a successful live call to Anthropic's API, which has never happened in this
-environment (see "ClaudeProvider" below). Reserve "AI flow verified end to end" for after that
-live call succeeds — contrast with the deterministic pipeline, which is complete end to end (see
-`11-analyzer.md`). The orchestration layer this builds on (`axiom-analyzer`'s
+Status: **AI flow verified end to end (2026-07-21).** `AIEnhancedAnalyzer`, `FakeLLMProvider`,
+`ClaudeProvider`, and `axiom-cli`'s `--ai` flag are all built, tested, and confirmed against the
+real Anthropic API — a live `axiom --ai` run produced a real `AiExplanation` alongside an unchanged
+deterministic classification (see "ClaudeProvider" below for the exact run and what's still not
+instrumented, like latency/model-version telemetry). Contrast with the deterministic pipeline,
+which was already complete end to end before this (see `11-analyzer.md`) — both halves are now
+proven, not just the deterministic one. The orchestration layer this builds on (`axiom-analyzer`'s
 `Analyzer`/`AnalysisResult`/`AnalyzedFailure`, `DeterministicAnalyzer`) was built first; see
 `11-analyzer.md` for that.
 
@@ -121,18 +119,24 @@ forward-compatible this way — confirmed by reading the SDK jar's actual class 
 any response), wrapping either into `LlmExplanationException` — this call site doesn't
 differentiate retry policy, so one catch is correct.
 
-**Status: implemented and locally verified. Pending live integration testing.** No real API call
-has been made in this environment — no `ANTHROPIC_API_KEY` and no `ant` CLI were available when
-this was built. Verified instead by: (1) compiling against the real SDK (`javap` was used to find
-the exact generic types — `StructuredMessage<T>`, `StructuredContentBlock<T>.text()` returning
+**Status: AI flow verified end to end against the real Anthropic API (2026-07-21).** A live
+`axiom --ai` run against a real `sk-ant-...` key succeeded: `claude-opus-4-8` returned a response
+that deserialized directly into `AiExplanation` via structured outputs (no manual JSON parsing,
+no fallback path exercised) with no code changes needed to `ClaudeProvider` itself. Before that,
+this was verified only by (1) compiling against the real SDK (`javap` was used to find the exact
+generic types — `StructuredMessage<T>`, `StructuredContentBlock<T>.text()` returning
 `Optional<StructuredTextBlock<T>>`, `StructuredTextBlock<T>.text()` returning `T` directly —
 rather than guessing signatures), and (2) a unit test that points the client at
-`http://127.0.0.1:1` (a reserved, immediately-refused port) to deterministically and quickly
-exercise the network-failure -> `LlmExplanationException` path without any real network access.
-Authentication against the real API, structured-output correctness against a live model, rate
-limits, retries/backoff, and large-stack-trace token-limit behavior are all still unverified —
-none of that is implied by "locally verified," and this should not be described as
-production-ready until a live call has actually succeeded.
+`http://127.0.0.1:1` (a reserved, immediately-refused port) to exercise the network-failure ->
+`LlmExplanationException` path without real network access. Still not measured: exact API latency,
+which model version string the server actually served (the response carries no model/token/latency
+metadata today — see the "Provider metadata on `AiExplanation`" roadmap backlog item), retry/backoff
+behavior, and large-stack-trace token-limit behavior. The live test also exposed and fixed a real
+defect: `axiom-cli` computed `AnalyzerWarning`s (`AI_TIMEOUT`, `AI_EXPLANATION_FAILED`) correctly
+but never printed them, so an invalid key or a too-short timeout silently produced no visible AI
+section at all, alongside a misleading "Warnings: none." Fixed by surfacing the matching
+`AnalyzerWarning` inline, right where the missing explanation would have appeared, correlated by
+`failureEventId`; re-verified live against both an invalid key and a 1-second timeout after the fix.
 
 ## `axiom-cli`'s `--ai` flag
 
