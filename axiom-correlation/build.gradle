@@ -1,0 +1,8 @@
+dependencies {
+    // Evidence, signals, and rules all operate on FailureEvent/ClassificationResult —
+    // this module is deliberately independent of axiom-analyzer/axiom-parser (see
+    // FailureAnalysisInput in .model): the correlation engine stays usable without the
+    // AI/orchestration layer or a specific report format ever being involved.
+    implementation project(':axiom-common')
+    implementation project(':axiom-classifier')
+}
