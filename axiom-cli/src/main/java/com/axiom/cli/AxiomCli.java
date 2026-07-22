@@ -6,6 +6,7 @@ import com.axiom.analyzer.AiExplanation;
 import com.axiom.analyzer.AnalysisResult;
 import com.axiom.analyzer.AnalyzedFailure;
 import com.axiom.analyzer.Analyzer;
+import com.axiom.analyzer.AnalyzerWarning;
 import com.axiom.analyzer.ClaudeProvider;
 import com.axiom.analyzer.DeterministicAnalyzer;
 import com.axiom.analyzer.LLMProvider;
@@ -33,6 +34,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Thin composition root: builds the concrete pipeline (rule loading/preparation, engine,
@@ -149,14 +151,21 @@ public final class AxiomCli {
         out.println("Detected " + result.analyses().size() + " failure(s)");
         out.println();
 
+        Map<String, List<AnalyzerWarning>> analyzerWarningsByFailure = result.analyzerWarnings()
+            .stream()
+            .collect(Collectors.groupingBy(AnalyzerWarning::failureEventId));
+
         for (AnalyzedFailure analyzed : result.analyses()) {
-            printAnalyzedFailure(analyzed, out);
+            printAnalyzedFailure(analyzed, analyzerWarningsByFailure, out);
         }
 
         printWarnings(result.parserWarnings(), out);
     }
 
-    private static void printAnalyzedFailure(AnalyzedFailure analyzed, PrintStream out) {
+    private static void printAnalyzedFailure(
+            AnalyzedFailure analyzed,
+            Map<String, List<AnalyzerWarning>> analyzerWarningsByFailure,
+            PrintStream out) {
         FailureEvent event = analyzed.event();
         ClassificationResult classification = analyzed.classification();
 
@@ -168,7 +177,13 @@ public final class AxiomCli {
         } else {
             out.println("  (no rule matched)");
         }
-        analyzed.explanation().ifPresent(explanation -> printExplanation(explanation, out));
+        if (analyzed.explanation().isPresent()) {
+            printExplanation(analyzed.explanation().get(), out);
+        } else {
+            for (AnalyzerWarning warning : analyzerWarningsByFailure.getOrDefault(event.id(), List.of())) {
+                out.println("  AI explanation unavailable (" + warning.type() + "): " + warning.detail());
+            }
+        }
         out.println();
     }
 
