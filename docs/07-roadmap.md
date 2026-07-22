@@ -7,6 +7,11 @@
 - **0.4** — Historical analysis
 - **1.0** — Engineering Intelligence Platform
 
+**Tagged `v0.1.0` (2026-07-21)**: covers deterministic classification through the AI-enhanced
+`--ai` flag, both verified end to end (deterministic via real rule/report files, AI via a live
+Anthropic API call). Freezes this milestone before starting any proposed follow-on work (e.g. an
+Evidence Correlation Engine, discussed but not yet designed or approved as of this tag).
+
 ## Current Build Order
 Build order was intentionally changed from the original parser-first sequence: the classifier
 work was already underway and doesn't depend on the parser existing, so it's being completed
