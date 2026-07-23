@@ -12,6 +12,13 @@
 Anthropic API call). Freezes this milestone before starting any proposed follow-on work (e.g. an
 Evidence Correlation Engine, discussed but not yet designed or approved as of this tag).
 
+**Since `v0.1.0` (not yet tagged)**: the Evidence Correlation Engine — `axiom-correlation`'s v0.1
+slice (`ApplicationBugCorrelationRule`) and v0.2 slice (`InfrastructureFailureRule`, competing
+hypotheses, `AssessmentSelector`'s minimum-lead requirement) plus a text/Markdown presentation
+layer — are all built, tested, and committed. Not yet wired into `axiom-cli` (no
+`axiom investigate` command exists), not yet pushed. Next planned rule: a flaky-test rule (see
+"Current Build Order" item 12 below).
+
 ## Current Build Order
 Build order was intentionally changed from the original parser-first sequence: the classifier
 work was already underway and doesn't depend on the parser existing, so it's being completed
@@ -46,15 +53,36 @@ vertically before starting the parser.
    model version the server returned (no telemetry on `AiExplanation` today — see the "Provider
    metadata" backlog item below), retry/backoff behavior, and large-stack-trace token-limit
    behavior.
-10. `axiom-reporting` (Markdown/HTML/JSON)
-11. `axiom-github` (PR comments, workflow summary)
+10. Evidence Correlation Engine (`axiom-correlation`) — **v0.1 and v0.2 done, not yet wired into
+    `axiom-cli`.** Multi-signal root-cause assessment (test-failure + source-change + execution
+    evidence), deterministic and separate from the single-event classifier above. v0.1:
+    `ApplicationBugCorrelationRule`, evidence model, signal extraction, abstention
+    (`NEEDS_INVESTIGATION`). v0.2: `InfrastructureFailureRule` — the first rule reusing a signal
+    with the opposite interpretation (`RETRY_PASSED` supports infrastructure, contradicts
+    application-bug), and an `AssessmentSelector` upgrade requiring a minimum confidence lead over
+    the runner-up hypothesis, not just clearing the threshold, so two competing plausible
+    hypotheses abstain rather than picking an arbitrary winner. Also built: a text/Markdown
+    presentation layer (`TextAssessmentRenderer`, `MarkdownAssessmentRenderer`) sharing derived
+    reasoning via `AssessmentFacts`, deliberately excluding any assigned owner or time estimate
+    (no evidence source for either exists). See `docs/13-evidence-correlation-design.md` and
+    `docs/14-correlation-signal-weights.md`. Remaining before this is a usable product feature
+    (not just a tested library): CLI wiring (an `axiom investigate` command).
+11. Flaky Test Rule (`axiom-correlation`) — **next, not started.** Third correlation rule.
+    Suggested order after this: Test Automation Rule, Deployment Failure Rule, Dependency Failure
+    Rule (see `14-correlation-signal-weights.md`'s "Adding a new rule to this matrix"). Each
+    additional rule should be validated against real failure examples, not just fixtures, before
+    being considered done — the same discipline already applied to the first two.
+12. `axiom-reporting` (Markdown/HTML/JSON)
+13. `axiom-github` (PR comments, workflow summary)
 
 ## Phase 2+ (post-1.0)
 From the current architecture's own long-term vision:
 - Failure clustering across repositories
 - AI-powered PR risk analysis
 - Test impact analysis / intelligent test selection
-- Root cause correlation
+- Root cause correlation — **partially built**, see item 10 above; "Phase 2+" here now refers to
+  the more advanced form (cross-repository, historical) this section originally meant, not the
+  single-run correlation that already exists
 - Historical failure trends
 - Pipeline health scoring
 - Release readiness insights
