@@ -8,6 +8,7 @@ import com.axiom.common.model.SourceFormat;
 import com.axiom.correlation.engine.ApplicationBugCorrelationRule;
 import com.axiom.correlation.engine.CorrelationEngine;
 import com.axiom.correlation.engine.CorrelationRule;
+import com.axiom.correlation.engine.InfrastructureFailureRule;
 import com.axiom.correlation.model.ChangeSetInput;
 import com.axiom.correlation.model.CorrelationEvidence;
 import com.axiom.correlation.model.ExecutionEvidence;
@@ -17,6 +18,7 @@ import com.axiom.correlation.model.RootCauseAssessment;
 import com.axiom.correlation.model.SourceChangeEvidence;
 import com.axiom.correlation.model.TestFailureEvidence;
 import com.axiom.correlation.signal.ChangeSetEvidenceMissingExtractor;
+import com.axiom.correlation.signal.FailureClusterPresentExtractor;
 import com.axiom.correlation.signal.RetryOutcomeExtractor;
 import com.axiom.correlation.signal.SignalExtractor;
 import com.axiom.correlation.signal.StackFrameMatchesChangedFileExtractor;
@@ -48,6 +50,18 @@ class TextAssessmentRendererTest {
         return new CorrelationEngine(extractors, rules);
     }
 
+    /** Separate from {@link #engine()} so existing fixtures above stay unaffected. */
+    private static CorrelationEngine engineWithAllRules() {
+        List<SignalExtractor> extractors = List.of(
+            new StackFrameMatchesChangedFileExtractor(),
+            new TopFrameIsTestCodeExtractor(),
+            new RetryOutcomeExtractor(),
+            new ChangeSetEvidenceMissingExtractor(),
+            new FailureClusterPresentExtractor());
+        List<CorrelationRule> rules = List.of(new ApplicationBugCorrelationRule(), new InfrastructureFailureRule());
+        return new CorrelationEngine(extractors, rules);
+    }
+
     private static FailureEvent failureEvent(String stackTrace) {
         return new FailureEvent(
             "failure-1", "testCharge", "com.example.PaymentServiceTest", null,
@@ -67,8 +81,13 @@ class TextAssessmentRendererTest {
     }
 
     private static ExecutionEvidence executionEvidence(boolean retryAttempted, boolean retryPassed) {
+        return executionEvidence(retryAttempted, retryPassed, 0);
+    }
+
+    private static ExecutionEvidence executionEvidence(
+            boolean retryAttempted, boolean retryPassed, int relatedFailureCount) {
         return ExecutionEvidence.from(
-            "evidence-execution", NOW, new ExecutionInput(retryAttempted, retryPassed, 0));
+            "evidence-execution", NOW, new ExecutionInput(retryAttempted, retryPassed, relatedFailureCount));
     }
 
     @Test
@@ -211,5 +230,38 @@ class TextAssessmentRendererTest {
 
         assertEquals(firstSummary, secondSummary);
         assertEquals(firstDetailed, secondDetailed);
+    }
+
+    @Test
+    void determinedInfrastructureFailureUsesInfrastructureSpecificAction() {
+        // Proves AssessmentFacts.recommendedActionForDetermined is category-aware: before this
+        // fix, every DETERMINED verdict rendered an application-bug-shaped "review changes in X"
+        // recommendation regardless of which category actually won.
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.INFRASTRUCTURE_FAILURE),
+            executionEvidence(true, true, 1));
+        RootCauseAssessment assessment = engineWithAllRules().assess(evidence);
+
+        String expected = String.join("\n",
+            "PaymentServiceTest.testCharge",
+            "",
+            "Likely cause: Infrastructure issue",
+            "Confidence: High - 85%",
+            "",
+            "Why Axiom thinks this:",
+            "- Existing deterministic classification is already INFRASTRUCTURE_FAILURE",
+            "- Failure cluster present",
+            "- Retry passed",
+            "",
+            "Evidence against: none",
+            "",
+            "Recommended next step:",
+            "Check the health of dependent services and infrastructure around the time of this failure.",
+            "",
+            "Result: Root cause determined");
+
+        assertEquals(expected, renderer.renderSummary(assessment, evidence));
     }
 }

@@ -41,7 +41,7 @@ record AssessmentFacts(
         Optional<RootCauseHypothesis> top = assessment.rankedHypotheses().stream().findFirst();
 
         String recommendedAction = assessment.disposition() == AssessmentDisposition.DETERMINED
-            ? recommendedActionForDetermined(evidence)
+            ? recommendedActionForDetermined(top.orElseThrow().category(), evidence)
             : recommendedActionForAbstention(assessment);
 
         return new AssessmentFacts(
@@ -109,10 +109,25 @@ record AssessmentFacts(
             .findFirst();
     }
 
-    private static String recommendedActionForDetermined(List<CorrelationEvidence> evidence) {
-        return changedFile(evidence)
-            .map(file -> "Review the recent changes in " + file + ".")
-            .orElse("Review the recent code changes associated with this failure.");
+    /**
+     * Category-aware: found while adding a third determinable category
+     * ({@code FLAKY_TEST}) that this previously assumed every determined hypothesis was an
+     * application bug and always recommended reviewing a changed file — nonsensical advice for an
+     * infrastructure or flaky-test verdict, where (for flaky specifically) the whole point of the
+     * hypothesis is that no such file correlation exists.
+     */
+    private static String recommendedActionForDetermined(
+            FailureCategory category, List<CorrelationEvidence> evidence) {
+        return switch (category) {
+            case APPLICATION_BUG -> changedFile(evidence)
+                .map(file -> "Review the recent changes in " + file + ".")
+                .orElse("Review the recent code changes associated with this failure.");
+            case INFRASTRUCTURE_FAILURE ->
+                "Check the health of dependent services and infrastructure around the time of this failure.";
+            case FLAKY_TEST -> "This failure appears transient within this execution. Re-run the "
+                + "test to confirm, and monitor for repeated occurrences before treating it as a stable defect.";
+            default -> "Review the evidence associated with this failure.";
+        };
     }
 
     /**
@@ -150,7 +165,9 @@ record AssessmentFacts(
             case CONFIGURATION_FAILURE -> "Configuration issue";
             case DATA_ISSUE -> "Data issue";
             case DEPENDENCY_FAILURE -> "Dependency issue";
-            case FLAKY_TEST -> "Possibly flaky test";
+            // Deliberately not "This test is flaky" — Axiom has no historical-run evidence
+            // source today, so it can only observe this execution's failure, not a track record.
+            case FLAKY_TEST -> "Possibly flaky (this run)";
             case UNKNOWN -> "Unknown";
         };
     }
