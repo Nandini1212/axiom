@@ -50,6 +50,26 @@ class CorrelationEngineTest {
         return new CorrelationEngine(extractors, rules);
     }
 
+    /**
+     * Separate from {@link #engine()} deliberately: several pre-existing fixtures above have
+     * {@code retryPassed=true}, which is exactly {@code FlakyTestRule}'s eligibility trigger.
+     * Adding it to the shared two-rule engine would introduce a third competing hypothesis into
+     * already-reviewed fixtures and could silently change their asserted outcomes (confirmed by
+     * hand-tracing before writing this comment — one existing test's exact hypothesis count would
+     * break). New tests that specifically want all three rules use this helper instead.
+     */
+    private static CorrelationEngine engineWithAllRules() {
+        List<SignalExtractor> extractors = List.of(
+            new StackFrameMatchesChangedFileExtractor(),
+            new TopFrameIsTestCodeExtractor(),
+            new RetryOutcomeExtractor(),
+            new ChangeSetEvidenceMissingExtractor(),
+            new FailureClusterPresentExtractor());
+        List<CorrelationRule> rules = List.of(
+            new ApplicationBugCorrelationRule(), new InfrastructureFailureRule(), new FlakyTestRule());
+        return new CorrelationEngine(extractors, rules);
+    }
+
     private static FailureEvent failureEvent(String stackTrace) {
         return new FailureEvent(
             "failure-1",
@@ -235,6 +255,53 @@ class CorrelationEngineTest {
             executionEvidence(true, true, 1));
 
         CorrelationEngine engine = engine();
+        RootCauseAssessment first = engine.assess(evidence);
+        RootCauseAssessment second = engine.assess(new ArrayList<>(evidence));
+
+        assertEquals(first, second);
+    }
+
+    @Test
+    void flakyTestWinsWhenNoCodeOrInfrastructureCorrelationExists() {
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.FLAKY_TEST),
+            executionEvidence(true, true, 0));
+
+        RootCauseAssessment assessment = engineWithAllRules().assess(evidence);
+
+        assertEquals(AssessmentDisposition.DETERMINED, assessment.disposition());
+        assertEquals(FailureCategory.FLAKY_TEST, assessment.selectedCategory().orElseThrow());
+        assertEquals(0.85, assessment.rankedHypotheses().get(0).confidence(), 0.0001);
+    }
+
+    @Test
+    void stackFrameMatchBlocksBothApplicationBugAndFlakyHypothesesSimultaneously() {
+        // Retry passed contradicts application-bug; the same changed-file correlation blocks
+        // flaky. Neither rule should be allowed to win just because the other was vetoed.
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.APPLICATION_BUG),
+            sourceChangeEvidence("src/main/java/com/example/PaymentService.java"),
+            executionEvidence(true, true, 0));
+
+        RootCauseAssessment assessment = engineWithAllRules().assess(evidence);
+
+        assertEquals(AssessmentDisposition.NEEDS_INVESTIGATION, assessment.disposition());
+        assertTrue(assessment.selectedCategory().isEmpty());
+    }
+
+    @Test
+    void repeatedEvaluationWithAllThreeRulesIsIdenticalEveryTime() {
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.FLAKY_TEST),
+            executionEvidence(true, true, 0));
+
+        CorrelationEngine engine = engineWithAllRules();
         RootCauseAssessment first = engine.assess(evidence);
         RootCauseAssessment second = engine.assess(new ArrayList<>(evidence));
 

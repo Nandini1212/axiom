@@ -8,6 +8,7 @@ import com.axiom.common.model.SourceFormat;
 import com.axiom.correlation.engine.ApplicationBugCorrelationRule;
 import com.axiom.correlation.engine.CorrelationEngine;
 import com.axiom.correlation.engine.CorrelationRule;
+import com.axiom.correlation.engine.FlakyTestRule;
 import com.axiom.correlation.engine.InfrastructureFailureRule;
 import com.axiom.correlation.model.ChangeSetInput;
 import com.axiom.correlation.model.CorrelationEvidence;
@@ -29,6 +30,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Golden-output (exact-string) tests for {@link TextAssessmentRenderer} — the same discipline
@@ -58,7 +60,8 @@ class TextAssessmentRendererTest {
             new RetryOutcomeExtractor(),
             new ChangeSetEvidenceMissingExtractor(),
             new FailureClusterPresentExtractor());
-        List<CorrelationRule> rules = List.of(new ApplicationBugCorrelationRule(), new InfrastructureFailureRule());
+        List<CorrelationRule> rules = List.of(
+            new ApplicationBugCorrelationRule(), new InfrastructureFailureRule(), new FlakyTestRule());
         return new CorrelationEngine(extractors, rules);
     }
 
@@ -263,5 +266,41 @@ class TextAssessmentRendererTest {
             "Result: Root cause determined");
 
         assertEquals(expected, renderer.renderSummary(assessment, evidence));
+    }
+
+    @Test
+    void determinedFlakyTestUsesCautiousWordingNotAHistoricalClaim() {
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.FLAKY_TEST),
+            executionEvidence(true, true));
+        RootCauseAssessment assessment = engineWithAllRules().assess(evidence);
+
+        String expected = String.join("\n",
+            "PaymentServiceTest.testCharge",
+            "",
+            "Likely cause: Possibly flaky (this run)",
+            "Confidence: High - 85%",
+            "",
+            "Why Axiom thinks this:",
+            "- Retry passed",
+            "- Existing deterministic classification is already FLAKY_TEST",
+            "- No stack frame correlates with a changed file",
+            "",
+            "Evidence against: none",
+            "",
+            "Recommended next step:",
+            "This failure appears transient within this execution. Re-run the test to confirm, "
+                + "and monitor for repeated occurrences before treating it as a stable defect.",
+            "",
+            "Result: Root cause determined");
+
+        String actual = renderer.renderSummary(assessment, evidence);
+        assertEquals(expected, actual);
+
+        // The one wording constraint this rule/renderer combination must never violate.
+        assertFalse(actual.toLowerCase(java.util.Locale.ROOT).contains("this test is flaky"));
+        assertFalse(actual.toLowerCase(java.util.Locale.ROOT).contains("known to be flaky"));
     }
 }
