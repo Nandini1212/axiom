@@ -15,6 +15,7 @@ import com.axiom.correlation.model.SourceChangeEvidence;
 import com.axiom.correlation.model.ExecutionEvidence;
 import com.axiom.correlation.model.TestFailureEvidence;
 import com.axiom.correlation.signal.ChangeSetEvidenceMissingExtractor;
+import com.axiom.correlation.signal.FailureClusterPresentExtractor;
 import com.axiom.correlation.signal.RetryOutcomeExtractor;
 import com.axiom.correlation.signal.SignalExtractor;
 import com.axiom.correlation.signal.StackFrameMatchesChangedFileExtractor;
@@ -28,10 +29,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Golden fixture tests for the v0.1 vertical slice: one rule (ApplicationBugCorrelationRule),
- * four signal extractors, deterministic scoring, and the DETERMINED/NEEDS_INVESTIGATION
- * abstention boundary. All evidence is constructed directly in Java — no files, no JSON, no
- * network access.
+ * Golden fixture tests for the correlation vertical slice: both rules
+ * ({@code ApplicationBugCorrelationRule}, {@code InfrastructureFailureRule}), five signal
+ * extractors, deterministic scoring, and the DETERMINED/NEEDS_INVESTIGATION abstention boundary
+ * (including the minimum-lead requirement between two competing hypotheses). All evidence is
+ * constructed directly in Java — no files, no JSON, no network access.
  */
 class CorrelationEngineTest {
 
@@ -42,8 +44,9 @@ class CorrelationEngineTest {
             new StackFrameMatchesChangedFileExtractor(),
             new TopFrameIsTestCodeExtractor(),
             new RetryOutcomeExtractor(),
-            new ChangeSetEvidenceMissingExtractor());
-        List<CorrelationRule> rules = List.of(new ApplicationBugCorrelationRule());
+            new ChangeSetEvidenceMissingExtractor(),
+            new FailureClusterPresentExtractor());
+        List<CorrelationRule> rules = List.of(new ApplicationBugCorrelationRule(), new InfrastructureFailureRule());
         return new CorrelationEngine(extractors, rules);
     }
 
@@ -78,7 +81,12 @@ class CorrelationEngineTest {
     }
 
     private static ExecutionEvidence executionEvidence(boolean retryAttempted, boolean retryPassed) {
-        ExecutionInput input = new ExecutionInput(retryAttempted, retryPassed, 0);
+        return executionEvidence(retryAttempted, retryPassed, 0);
+    }
+
+    private static ExecutionEvidence executionEvidence(
+            boolean retryAttempted, boolean retryPassed, int relatedFailureCount) {
+        ExecutionInput input = new ExecutionInput(retryAttempted, retryPassed, relatedFailureCount);
         return ExecutionEvidence.from("evidence-execution", NOW, input);
     }
 
@@ -182,5 +190,54 @@ class CorrelationEngineTest {
         assertEquals(first.selectedCategory(), second.selectedCategory());
         assertEquals(first.rankedHypotheses(), second.rankedHypotheses());
         assertEquals(first.missingEvidence(), second.missingEvidence());
+    }
+
+    @Test
+    void infrastructureClassificationClusterAndRetryPassSelectsInfrastructureFailure() {
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.INFRASTRUCTURE_FAILURE),
+            executionEvidence(true, true, 1));
+
+        RootCauseAssessment assessment = engine().assess(evidence);
+
+        assertEquals(AssessmentDisposition.DETERMINED, assessment.disposition());
+        assertEquals(FailureCategory.INFRASTRUCTURE_FAILURE, assessment.selectedCategory().orElseThrow());
+    }
+
+    @Test
+    void clusterAndRetryPassWithoutClassifierSupportAbstains() {
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.UNKNOWN),
+            executionEvidence(true, true, 1));
+
+        RootCauseAssessment assessment = engine().assess(evidence);
+
+        assertEquals(AssessmentDisposition.NEEDS_INVESTIGATION, assessment.disposition());
+        assertTrue(assessment.selectedCategory().isEmpty());
+        // ApplicationBugCorrelationRule also fires here (retry-passed + missing-changeset are both
+        // non-empty contributions, even though they clamp its confidence to 0.0) — both hypotheses
+        // are ranked, infrastructure's 0.45 ahead of application-bug's 0.0.
+        assertEquals(2, assessment.rankedHypotheses().size());
+        assertEquals(FailureCategory.INFRASTRUCTURE_FAILURE, assessment.rankedHypotheses().get(0).category());
+        assertEquals(0.45, assessment.rankedHypotheses().get(0).confidence(), 0.0001);
+    }
+
+    @Test
+    void repeatedEvaluationWithBothRulesIsIdenticalEveryTime() {
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.INFRASTRUCTURE_FAILURE),
+            executionEvidence(true, true, 1));
+
+        CorrelationEngine engine = engine();
+        RootCauseAssessment first = engine.assess(evidence);
+        RootCauseAssessment second = engine.assess(new ArrayList<>(evidence));
+
+        assertEquals(first, second);
     }
 }

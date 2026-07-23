@@ -5,34 +5,53 @@ import com.axiom.correlation.model.AssessmentDisposition;
 import com.axiom.correlation.model.RootCauseAssessment;
 import com.axiom.correlation.model.RootCauseHypothesis;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * Decides {@code DETERMINED} vs. {@code NEEDS_INVESTIGATION}. Selects the top-ranked hypothesis
- * only when its confidence clears the threshold <b>and</b> it carries no blocking contradiction —
- * both conditions checked independently, not assuming one implies the other.
+ * only when three independent conditions all hold:
+ * <ol>
+ *   <li>confidence clears {@link #CONFIDENCE_THRESHOLD}</li>
+ *   <li>it carries no blocking contradiction</li>
+ *   <li>it leads the second-ranked hypothesis by at least {@link #MINIMUM_HYPOTHESIS_LEAD}</li>
+ * </ol>
+ * The third condition only matters once a second rule can fire on the same evidence — with one
+ * rule (v0.1), there is never a second hypothesis, so it never blocks selection. A close
+ * competition between two plausible hypotheses (e.g. application bug vs. infrastructure failure)
+ * must produce {@code NEEDS_INVESTIGATION}, not an arbitrary winner — {@code rankedHypotheses}
+ * still preserves both, so the ambiguity itself is visible, not just the fact that one was
+ * (arbitrarily) picked.
  * <p>
- * "Lead over second-ranked hypothesis" from the original design sketch is not implemented: with
- * exactly one rule in this slice, there is never a second hypothesis to compare against. Add that
- * comparison when a second rule actually exists, not speculatively now.
+ * Ranking sorts by confidence descending, then rule id ascending as a stable tie-break — this
+ * controls display order only. An exact tie always fails the lead requirement (a 0.0 lead is
+ * never {@code >= MINIMUM_HYPOTHESIS_LEAD}), so the tie-break can never turn a tie into a
+ * {@code DETERMINED} result.
  */
 final class AssessmentSelector {
 
     static final double CONFIDENCE_THRESHOLD = 0.70;
+    static final double MINIMUM_HYPOTHESIS_LEAD = 0.15;
 
     static RootCauseAssessment select(List<ScoredEvaluation> scored, List<String> missingEvidence) {
-        List<RootCauseHypothesis> ranked = scored.stream()
-            .sorted((a, b) -> Double.compare(b.confidence(), a.confidence()))
-            .map(ScoredEvaluation::toHypothesis)
+        List<ScoredEvaluation> sorted = scored.stream()
+            .sorted(Comparator.comparingDouble(ScoredEvaluation::confidence).reversed()
+                .thenComparing(ScoredEvaluation::ruleId))
             .toList();
 
-        Optional<ScoredEvaluation> top = scored.stream()
-            .max((a, b) -> Double.compare(a.confidence(), b.confidence()));
+        List<RootCauseHypothesis> ranked = sorted.stream().map(ScoredEvaluation::toHypothesis).toList();
+
+        Optional<ScoredEvaluation> top = sorted.stream().findFirst();
+        Optional<ScoredEvaluation> second = sorted.size() > 1 ? Optional.of(sorted.get(1)) : Optional.empty();
+
+        boolean hasSufficientLead = second.isEmpty()
+            || top.get().confidence() - second.get().confidence() >= MINIMUM_HYPOTHESIS_LEAD;
 
         boolean determined = top.isPresent()
             && top.get().confidence() >= CONFIDENCE_THRESHOLD
-            && !top.get().evaluation().hasBlockingContradiction();
+            && !top.get().evaluation().hasBlockingContradiction()
+            && hasSufficientLead;
 
         if (determined) {
             FailureCategory selected = top.get().evaluation().category();

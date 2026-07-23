@@ -5,8 +5,9 @@ import java.util.Objects;
 
 /**
  * The domain evidence type built from an {@link ExecutionInput}. {@code relatedFailureCount} is
- * carried even though no signal in this slice consumes it yet — honest input modeling for a field
- * a future rule (e.g. infrastructure-outage correlation) will need, not a used signal today.
+ * the number of <i>additional</i> failures observed alongside this one — not including the
+ * current test itself; see {@link ExecutionInput} for the exact semantics. Consumed by
+ * {@code FailureClusterPresentExtractor}.
  */
 public record ExecutionEvidence(
         String evidenceId,
