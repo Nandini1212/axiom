@@ -23,4 +23,12 @@ class HistoryWarningTest {
     void rejectsNullMessage() {
         assertThrows(NullPointerException.class, () -> new HistoryWarning("build-1042", null));
     }
+
+    @Test
+    void duplicateRunIdFactoryCarriesTheRunId() {
+        HistoryWarning warning = HistoryWarning.duplicateRunId("build-1042");
+
+        assertEquals("build-1042", warning.runId());
+        assertFalse(warning.message().isBlank());
+    }
 }

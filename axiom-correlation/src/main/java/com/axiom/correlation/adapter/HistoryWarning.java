@@ -15,4 +15,13 @@ public record HistoryWarning(String runId, String message) {
         Objects.requireNonNull(runId, "runId is mandatory");
         Objects.requireNonNull(message, "message is mandatory");
     }
+
+    /**
+     * The English wording lives here, with the warning it describes — not scattered across
+     * whichever adapter code happens to construct one. {@link HistoryFileAdapter}'s job reduces to
+     * "duplicate detected" → this factory, not "duplicate detected" → its own prose.
+     */
+    public static HistoryWarning duplicateRunId(String runId) {
+        return new HistoryWarning(runId, "Duplicate runId in history.json - keeping first occurrence");
+    }
 }

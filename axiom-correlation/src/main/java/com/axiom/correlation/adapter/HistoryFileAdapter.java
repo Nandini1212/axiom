@@ -72,8 +72,7 @@ public final class HistoryFileAdapter {
         Map<String, HistoricalRunInput> byRunId = new LinkedHashMap<>();
         for (HistoricalRunInput run : runs) {
             if (byRunId.containsKey(run.runId())) {
-                warnings.add(new HistoryWarning(
-                    run.runId(), "Duplicate runId in history.json - keeping first occurrence"));
+                warnings.add(HistoryWarning.duplicateRunId(run.runId()));
                 continue;
             }
             byRunId.put(run.runId(), run);
