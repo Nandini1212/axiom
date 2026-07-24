@@ -57,8 +57,39 @@ class HistoricalExecutionEvidenceTest {
         mutable.add(new HistoricalTestRun("build-1040", NOW, HistoricalOutcome.PASSED));
 
         assertEquals(2, evidence.runs().size());
+        assertEquals("build-1042", evidence.runs().get(0).runId());
+        assertEquals("build-1041", evidence.runs().get(1).runId());
         assertThrows(UnsupportedOperationException.class,
             () -> evidence.runs().add(new HistoricalTestRun("x", NOW, HistoricalOutcome.PASSED)));
+    }
+
+    @Test
+    void unorderedInputBecomesNewestFirst() {
+        List<HistoricalTestRun> unordered = List.of(
+            new HistoricalTestRun("build-1030", NOW.minusSeconds(7200), HistoricalOutcome.PASSED),
+            new HistoricalTestRun("build-1042", NOW, HistoricalOutcome.FAILED),
+            new HistoricalTestRun("build-1041", NOW.minusSeconds(3600), HistoricalOutcome.PASSED));
+
+        HistoricalExecutionEvidence evidence = new HistoricalExecutionEvidence(
+            "evidence-history", NOW, IDENTITY, Optional.empty(), unordered);
+
+        assertEquals(
+            List.of("build-1042", "build-1041", "build-1030"),
+            evidence.runs().stream().map(HistoricalTestRun::runId).toList());
+    }
+
+    @Test
+    void equalTimestampsBreakTiesByRunIdAscending() {
+        List<HistoricalTestRun> sameTimestamp = List.of(
+            new HistoricalTestRun("build-1042", NOW, HistoricalOutcome.PASSED),
+            new HistoricalTestRun("build-1041", NOW, HistoricalOutcome.FAILED));
+
+        HistoricalExecutionEvidence evidence = new HistoricalExecutionEvidence(
+            "evidence-history", NOW, IDENTITY, Optional.empty(), sameTimestamp);
+
+        assertEquals(
+            List.of("build-1041", "build-1042"),
+            evidence.runs().stream().map(HistoricalTestRun::runId).toList());
     }
 
     @Test
