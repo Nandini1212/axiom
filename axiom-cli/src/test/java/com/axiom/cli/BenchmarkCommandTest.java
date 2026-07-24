@@ -99,12 +99,47 @@ class BenchmarkCommandTest {
     }
 
     @Test
-    void caseDirectoryMissingExpectedAssessmentIsSkippedNotTreatedAsAnError() {
+    void allCasesIncompleteReturnsUsageErrorExitCode2() {
         RunResult result = runCli("benchmark",
             "--rules", resource("benchmark/rules.yaml").toString(),
             resource("benchmark-incomplete").toString());
 
         assertEquals(2, result.exitCode());
-        assertTrue(result.err().contains("No benchmark cases found"));
+        assertTrue(result.err().contains("No valid benchmark cases found"));
+    }
+
+    @Test
+    void incompleteCaseFailsDatasetValidationByDefaultEvenWhenOtherCasesPass() {
+        RunResult result = runCli("benchmark",
+            "--rules", resource("benchmark/rules.yaml").toString(),
+            resource("benchmark-mixed").toString());
+
+        assertEquals(1, result.exitCode());
+        assertTrue(result.out().contains("Skipped: incomplete/case-1"));
+        assertTrue(result.out().contains("Reason: expected-assessment.json missing"));
+        assertTrue(result.out().contains("valid/case-1"));
+        assertTrue(result.out().contains("PASS"));
+        assertTrue(result.out().contains("Cases discovered: 2"));
+        assertTrue(result.out().contains("Cases executed: 1"));
+        assertTrue(result.out().contains("Cases skipped: 1"));
+        assertTrue(result.err().contains("Dataset validation failed"));
+    }
+
+    @Test
+    void skipIncompleteFlagRunsValidCasesAndIgnoresTheIncompleteOne() {
+        RunResult result = runCli("benchmark",
+            "--rules", resource("benchmark/rules.yaml").toString(),
+            "--skip-incomplete",
+            resource("benchmark-mixed").toString());
+
+        assertEquals(0, result.exitCode());
+        assertTrue(result.out().contains("valid/case-1"));
+        assertTrue(result.out().contains("Accuracy: 1/1 (100%)"));
+        assertTrue(result.out().contains("Cases discovered: 2"));
+        assertTrue(result.out().contains("Cases executed: 1"));
+        assertTrue(result.out().contains("Cases skipped: 1"));
+        assertFalse(result.out().contains("Skipped: incomplete/case-1"),
+            "--skip-incomplete silently ignores incomplete cases rather than reporting them");
+        assertFalse(result.err().contains("Dataset validation failed"));
     }
 }

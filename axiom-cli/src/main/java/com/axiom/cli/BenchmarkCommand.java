@@ -22,12 +22,13 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * The {@code axiom benchmark} subcommand: runs every fixture case under a benchmark directory
@@ -39,12 +40,25 @@ import java.util.UUID;
  * Expected directory shape: {@code <root>/<category>/<case-id>/} each holding {@code report.xml}
  * (mandatory), optionally {@code changes.json}/{@code execution.json}/{@code history.json}
  * (exactly {@link FileEvidenceCollector}'s own optionality), and a mandatory
- * {@code expected-assessment.json}. A directory missing either mandatory file is skipped, not
- * treated as an error — lets a benchmark root hold scratch/incomplete cases without breaking a run.
+ * {@code expected-assessment.json}.
+ * <p>
+ * <b>An incomplete case directory (missing either mandatory file) fails dataset validation by
+ * default</b> — a benchmark whose job is catching regressions must not silently become easier
+ * because a fixture went missing (e.g. an accidentally deleted {@code expected-assessment.json}
+ * quietly raising reported accuracy). Pass {@code --skip-incomplete} to opt into the lenient,
+ * development-only behavior of skipping incomplete directories instead.
+ * <p>
+ * {@code Clock}/investigation-id generation are fixed and deterministic
+ * ({@code benchmark-<category>-<case-id>}, a fixed reference {@link Instant}), not
+ * {@code Clock.systemUTC()}/{@code UUID.randomUUID()} — benchmark output should be reproducible
+ * run to run, including timestamps and generated ids, not just the category comparison.
  */
 final class BenchmarkCommand {
 
-    private static final String USAGE = "Usage: axiom benchmark --rules <rules.yaml> <benchmark-dir>";
+    private static final String USAGE =
+        "Usage: axiom benchmark --rules <rules.yaml> [--skip-incomplete] <benchmark-dir>";
+
+    private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2000-01-01T00:00:00Z"), ZoneOffset.UTC);
 
     private static final ObjectMapper JSON_MAPPER = JsonMapper.builder()
         .addModule(new Jdk8Module())
@@ -54,6 +68,7 @@ final class BenchmarkCommand {
     static int run(String[] args, PrintStream out, PrintStream err) {
         Path rulesPath = null;
         Path benchmarkRoot = null;
+        boolean skipIncomplete = false;
 
         for (int i = 0; i < args.length; i++) {
             if ("--rules".equals(args[i])) {
@@ -63,6 +78,8 @@ final class BenchmarkCommand {
                     return 2;
                 }
                 rulesPath = Path.of(args[++i]);
+            } else if ("--skip-incomplete".equals(args[i])) {
+                skipIncomplete = true;
             } else if (benchmarkRoot == null) {
                 benchmarkRoot = Path.of(args[i]);
             } else {
@@ -88,9 +105,19 @@ final class BenchmarkCommand {
         }
 
         try {
-            List<BenchmarkCase> cases = discoverCases(benchmarkRoot);
-            if (cases.isEmpty()) {
+            DiscoveryResult discovery = discoverCases(benchmarkRoot);
+            int discovered = discovery.cases().size() + discovery.incomplete().size();
+
+            if (discovered == 0) {
                 err.println("No benchmark cases found under " + benchmarkRoot);
+                return 2;
+            }
+            if (!discovery.incomplete().isEmpty() && !skipIncomplete) {
+                printSkipped(discovery.incomplete(), out);
+            }
+            if (discovery.cases().isEmpty()) {
+                err.println("No valid benchmark cases found under " + benchmarkRoot
+                    + " (" + discovery.incomplete().size() + " incomplete)");
                 return 2;
             }
 
@@ -98,12 +125,20 @@ final class BenchmarkCommand {
             CorrelationEngine engine = InvestigateCommand.createCorrelationEngine();
 
             List<BenchmarkResult> results = new ArrayList<>();
-            for (BenchmarkCase testCase : cases) {
+            for (BenchmarkCase testCase : discovery.cases()) {
                 results.add(runCase(testCase, analyzer, engine));
             }
 
             printResults(results, out);
-            return results.stream().allMatch(BenchmarkResult::passed) ? 0 : 1;
+            printCounts(discovered, results.size(), discovery.incomplete().size(), out);
+
+            boolean allPassed = results.stream().allMatch(BenchmarkResult::passed);
+            if (!discovery.incomplete().isEmpty() && !skipIncomplete) {
+                err.println("Dataset validation failed: " + discovery.incomplete().size()
+                    + " incomplete case(s) found (pass --skip-incomplete to ignore)");
+                return 1;
+            }
+            return allPassed ? 0 : 1;
         } catch (IOException | RuntimeException e) {
             err.println("Error: " + e.getMessage());
             return 1;
@@ -113,9 +148,10 @@ final class BenchmarkCommand {
     private static BenchmarkResult runCase(BenchmarkCase testCase, Analyzer analyzer, CorrelationEngine engine) {
         EvidenceCollector collector = new FileEvidenceCollector(
             analyzer, testCase.reportPath(), testCase.changesPath(), testCase.executionPath(),
-            testCase.historyPath(), Clock.systemUTC());
+            testCase.historyPath(), FIXED_CLOCK);
+        String investigationId = "benchmark-" + testCase.category() + "-" + testCase.caseId();
         InvestigationRunner runner = new InvestigationRunner(
-            List.of(collector), engine, () -> UUID.randomUUID().toString(), Clock.systemUTC());
+            List.of(collector), engine, () -> investigationId, FIXED_CLOCK);
 
         Investigation investigation = runner.run(new InvestigationContext(TriggerType.MANUAL, null));
         RootCauseAssessment actual = investigation.assessment();
@@ -142,6 +178,20 @@ final class BenchmarkCommand {
             + " (" + Math.round(100.0 * passedCount / total) + "%)");
     }
 
+    private static void printSkipped(List<IncompleteCase> incomplete, PrintStream out) {
+        for (IncompleteCase skipped : incomplete) {
+            out.println("Skipped: " + skipped.category() + "/" + skipped.caseId());
+            out.println("Reason: " + skipped.reason());
+            out.println();
+        }
+    }
+
+    private static void printCounts(int discovered, int executed, int skipped, PrintStream out) {
+        out.println("Cases discovered: " + discovered);
+        out.println("Cases executed: " + executed);
+        out.println("Cases skipped: " + skipped);
+    }
+
     private static String describe(AssessmentDisposition disposition, Optional<FailureCategory> category) {
         return disposition == AssessmentDisposition.DETERMINED ? category.orElseThrow().name() : "NEEDS_INVESTIGATION";
     }
@@ -150,33 +200,45 @@ final class BenchmarkCommand {
      * Two-level walk ({@code <root>/<category>/<case-id>/}), sorted by category then case id for
      * deterministic, reproducible output across runs.
      */
-    private static List<BenchmarkCase> discoverCases(Path benchmarkRoot) throws IOException {
+    private static DiscoveryResult discoverCases(Path benchmarkRoot) throws IOException {
         List<BenchmarkCase> cases = new ArrayList<>();
+        List<IncompleteCase> incomplete = new ArrayList<>();
+
         try (DirectoryStream<Path> categoryDirs = Files.newDirectoryStream(benchmarkRoot, Files::isDirectory)) {
             for (Path categoryDir : categoryDirs) {
                 try (DirectoryStream<Path> caseDirs = Files.newDirectoryStream(categoryDir, Files::isDirectory)) {
                     for (Path caseDir : caseDirs) {
-                        readCase(categoryDir, caseDir).ifPresent(cases::add);
+                        readCase(categoryDir, caseDir, cases, incomplete);
                     }
                 }
             }
         }
         cases.sort(Comparator.comparing(BenchmarkCase::category).thenComparing(BenchmarkCase::caseId));
-        return cases;
+        incomplete.sort(Comparator.comparing(IncompleteCase::category).thenComparing(IncompleteCase::caseId));
+        return new DiscoveryResult(cases, incomplete);
     }
 
-    private static Optional<BenchmarkCase> readCase(Path categoryDir, Path caseDir) throws IOException {
+    private static void readCase(
+            Path categoryDir, Path caseDir, List<BenchmarkCase> cases, List<IncompleteCase> incomplete)
+            throws IOException {
+        String category = categoryDir.getFileName().toString();
+        String caseId = caseDir.getFileName().toString();
         Path reportPath = caseDir.resolve("report.xml");
         Path expectedPath = caseDir.resolve("expected-assessment.json");
-        if (!Files.isRegularFile(reportPath) || !Files.isRegularFile(expectedPath)) {
-            return Optional.empty();
+
+        boolean hasReport = Files.isRegularFile(reportPath);
+        boolean hasExpected = Files.isRegularFile(expectedPath);
+        if (!hasReport || !hasExpected) {
+            String missing = !hasReport && !hasExpected
+                ? "report.xml and expected-assessment.json missing"
+                : (!hasReport ? "report.xml missing" : "expected-assessment.json missing");
+            incomplete.add(new IncompleteCase(category, caseId, missing));
+            return;
         }
 
         ExpectedAssessment expected = JSON_MAPPER.readValue(expectedPath.toFile(), ExpectedAssessment.class);
-        return Optional.of(new BenchmarkCase(
-            categoryDir.getFileName().toString(),
-            caseDir.getFileName().toString(),
-            reportPath,
+        cases.add(new BenchmarkCase(
+            category, caseId, reportPath,
             existingFile(caseDir.resolve("changes.json")),
             existingFile(caseDir.resolve("execution.json")),
             existingFile(caseDir.resolve("history.json")),
@@ -185,6 +247,12 @@ final class BenchmarkCommand {
 
     private static Optional<Path> existingFile(Path path) {
         return Files.isRegularFile(path) ? Optional.of(path) : Optional.empty();
+    }
+
+    private record DiscoveryResult(List<BenchmarkCase> cases, List<IncompleteCase> incomplete) {
+    }
+
+    private record IncompleteCase(String category, String caseId, String reason) {
     }
 
     private record BenchmarkCase(
