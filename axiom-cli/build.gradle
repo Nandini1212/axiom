@@ -9,14 +9,16 @@ application {
 
 dependencies {
     // The composition root: wires the parser, rule loading/processing, engine, strategy, and
-    // analyzer together. Depends on every module below the still-unbuilt reporting/GitHub layer.
-    // Deliberately no axiom-correlation/axiom-investigation/axiom-investigation-file dependency
-    // yet -- those are wired in only once axiom-cli actually invokes InvestigationRunner (not
-    // this milestone; see docs/17-investigation-architecture.md §12's CLI-wiring non-goal).
+    // analyzer together (the classic command), plus the Investigation pipeline (the `investigate`
+    // subcommand, InvestigateCommand) -- axiom-correlation/axiom-investigation/
+    // axiom-investigation-file added back now that axiom-cli actually invokes InvestigationRunner.
     implementation project(':axiom-common')
     implementation project(':axiom-classifier')
     implementation project(':axiom-parser')
     implementation project(':axiom-analyzer')
+    implementation project(':axiom-correlation')
+    implementation project(':axiom-investigation')
+    implementation project(':axiom-investigation-file')
 
     // axiom-cli constructs the AnthropicClient itself (composition root) — axiom-analyzer's own
     // dependency on this is `implementation`, not transitively exposed, so it's declared here too.
