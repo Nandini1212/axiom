@@ -1,4 +1,4 @@
-# Correlation Signal/Weight Matrix — v0.3 (as of 2026-07-22, `FlakyTestRule`)
+# Correlation Signal/Weight Matrix — v0.3 (as of 2026-07-22, `TransientFailureRule`)
 
 Internal design documentation for `axiom-correlation` — not because the code needs it (each
 weight is a named constant on its own rule class, see `04-rule-engine.md`'s equivalent reasoning
@@ -6,9 +6,9 @@ for `axiom-classifier`), but because comparing rules "by eye" across separate fi
 more of them accumulate. This doc is a human-readable index into the actual constants, not a
 second source of truth — if it and the code ever disagree, the code wins; fix this doc.
 
-## Weight matrix (as of `FlakyTestRule`, the third rule)
+## Weight matrix (as of `TransientFailureRule`, the third rule)
 
-| Signal | ApplicationBugCorrelationRule | InfrastructureFailureRule | FlakyTestRule |
+| Signal | ApplicationBugCorrelationRule | InfrastructureFailureRule | TransientFailureRule |
 | --- | ---: | ---: | ---: |
 | Stack frame matches changed file | +0.40 | -0.35 | -0.40 (blocking) |
 | No stack frame correlates with changed file | 0 (not consumed) | 0 (not consumed) | +0.10 |
@@ -27,7 +27,7 @@ rules** (`RETRY_PASSED` contradicts application-bug but supports both infrastruc
 flaky-test — see ADR-equivalent reasoning in `13-evidence-correlation-design.md` §9), and **a rule
 consuming "0" for a signal is a deliberate omission, not a missing feature** (e.g.
 `InfrastructureFailureRule` intentionally never penalizes missing change-set evidence — see
-below). `FlakyTestRule` is the first rule to score an *absence* as a positive contribution (no
+below). `TransientFailureRule` is the first rule to score an *absence* as a positive contribution (no
 stack match, no cluster) rather than only scoring presence — see its rationale below for why that
 absence-as-evidence pattern is treated as weaker than direct positive evidence, not equally strong.
 
@@ -43,9 +43,9 @@ categories should contribute symmetric negative evidence. Do not assume symmetry
 validate it against real failure examples first; some classifications may deserve asymmetric
 treatment because they have different reliability or specificity.
 
-## `FlakyTestRule`'s scope is narrower than its name (read before tuning its weights)
+## `TransientFailureRule`'s scope is narrower than its name (read before tuning its weights)
 
-`FlakyTestRule` identifies a **single-run transient failure**, not historical flakiness. Axiom has
+`TransientFailureRule` identifies a **single-run transient failure**, not historical flakiness. Axiom has
 no evidence source for behavior across multiple runs today — no `FAILED_IN_MULTIPLE_RECENT_RUNS`,
 `FLAKE_RATE_ABOVE_THRESHOLD`, or similar signal exists — so "this test is known to be flaky" is not
 a claim this rule is entitled to make; only "this failure appears transient in this execution" is.
@@ -152,7 +152,7 @@ pattern-matching on the message, not evidence of actual transience within this e
   score reduction. Resist adding one without being able to state that invariant explicitly (per
   review discussion, 2026-07-21) — "this evidence makes X less likely" is not the same claim as
   "this evidence makes X impossible."
-- **`FlakyTestRule`**: `STACK_FRAME_MATCHES_CHANGED_FILE` is blocking; `FAILURE_CLUSTER_PRESENT` is
+- **`TransientFailureRule`**: `STACK_FRAME_MATCHES_CHANGED_FILE` is blocking; `FAILURE_CLUSTER_PRESENT` is
   not. The domain invariant that justifies the first: a real, intermittent application bug can
   still pass on retry, so "it passed on retry" must never override "the failing code was just
   changed" — that would be treating weak evidence as if it outranked strong evidence. No equivalent
@@ -168,7 +168,7 @@ pattern-matching on the message, not evidence of actual transience within this e
   before evaluating anything else. A single passing retry, alone, must never suggest
   infrastructure — that gate exists specifically to keep a future flaky-test rule's territory
   from being claimed by this one.
-- **`FlakyTestRule`**: requires `RETRY_PASSED` — you cannot call a failure transient without having
+- **`TransientFailureRule`**: requires `RETRY_PASSED` — you cannot call a failure transient without having
   seen it pass at least once. The narrowest gate of the three (a single boolean, not an OR), and
   the rule this project's own earlier review anticipated when writing `InfrastructureFailureRule`'s
   gate ("keep a future flaky-test rule's territory from being claimed by this one" — see above).

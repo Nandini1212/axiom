@@ -52,7 +52,7 @@ class CorrelationEngineTest {
 
     /**
      * Separate from {@link #engine()} deliberately: several pre-existing fixtures above have
-     * {@code retryPassed=true}, which is exactly {@code FlakyTestRule}'s eligibility trigger.
+     * {@code retryPassed=true}, which is exactly {@code TransientFailureRule}'s eligibility trigger.
      * Adding it to the shared two-rule engine would introduce a third competing hypothesis into
      * already-reviewed fixtures and could silently change their asserted outcomes (confirmed by
      * hand-tracing before writing this comment — one existing test's exact hypothesis count would
@@ -66,7 +66,7 @@ class CorrelationEngineTest {
             new ChangeSetEvidenceMissingExtractor(),
             new FailureClusterPresentExtractor());
         List<CorrelationRule> rules = List.of(
-            new ApplicationBugCorrelationRule(), new InfrastructureFailureRule(), new FlakyTestRule());
+            new ApplicationBugCorrelationRule(), new InfrastructureFailureRule(), new TransientFailureRule());
         return new CorrelationEngine(extractors, rules);
     }
 

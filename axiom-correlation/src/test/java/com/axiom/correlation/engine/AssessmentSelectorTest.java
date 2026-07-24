@@ -110,7 +110,7 @@ class AssessmentSelectorTest {
             List.of(
                 scored("application-bug-v1", FailureCategory.APPLICATION_BUG, 0.55, false),
                 scored("infrastructure-failure-v1", FailureCategory.INFRASTRUCTURE_FAILURE, 0.50, false),
-                scored("flaky-test-v1", FailureCategory.FLAKY_TEST, 0.45, false)),
+                scored("transient-failure-v1", FailureCategory.FLAKY_TEST, 0.45, false)),
             List.of());
 
         assertEquals(3, assessment.rankedHypotheses().size());

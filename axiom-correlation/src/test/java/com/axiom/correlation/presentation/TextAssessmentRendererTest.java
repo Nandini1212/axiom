@@ -8,8 +8,8 @@ import com.axiom.common.model.SourceFormat;
 import com.axiom.correlation.engine.ApplicationBugCorrelationRule;
 import com.axiom.correlation.engine.CorrelationEngine;
 import com.axiom.correlation.engine.CorrelationRule;
-import com.axiom.correlation.engine.FlakyTestRule;
 import com.axiom.correlation.engine.InfrastructureFailureRule;
+import com.axiom.correlation.engine.TransientFailureRule;
 import com.axiom.correlation.model.ChangeSetInput;
 import com.axiom.correlation.model.CorrelationEvidence;
 import com.axiom.correlation.model.ExecutionEvidence;
@@ -61,7 +61,7 @@ class TextAssessmentRendererTest {
             new ChangeSetEvidenceMissingExtractor(),
             new FailureClusterPresentExtractor());
         List<CorrelationRule> rules = List.of(
-            new ApplicationBugCorrelationRule(), new InfrastructureFailureRule(), new FlakyTestRule());
+            new ApplicationBugCorrelationRule(), new InfrastructureFailureRule(), new TransientFailureRule());
         return new CorrelationEngine(extractors, rules);
     }
 

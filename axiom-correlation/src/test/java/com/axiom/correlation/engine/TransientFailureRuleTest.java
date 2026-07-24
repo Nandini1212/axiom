@@ -19,13 +19,13 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Direct unit tests for {@link FlakyTestRule} — constructed with a bare
+ * Direct unit tests for {@link TransientFailureRule} — constructed with a bare
  * {@link CorrelationContext}, no {@link CorrelationEngine}.
  */
-class FlakyTestRuleTest {
+class TransientFailureRuleTest {
 
     private static final Instant NOW = Instant.parse("2026-07-22T12:00:00Z");
-    private final FlakyTestRule rule = new FlakyTestRule();
+    private final TransientFailureRule rule = new TransientFailureRule();
 
     private static TestFailureEvidence testFailureEvidence(FailureCategory category) {
         FailureEvent event = new FailureEvent(
@@ -39,7 +39,7 @@ class FlakyTestRuleTest {
 
     @Test
     void hasStableId() {
-        assertEquals("flaky-test-v1", rule.id());
+        assertEquals("transient-failure-v1", rule.id());
     }
 
     @Test
@@ -133,6 +133,6 @@ class FlakyTestRuleTest {
 
         assertFalse(evaluation.hasBlockingContradiction());
         assertTrue(evaluation.contributions().stream()
-            .anyMatch(c -> c.weight() == FlakyTestRule.WEIGHT_ALREADY_APPLICATION_BUG));
+            .anyMatch(c -> c.weight() == TransientFailureRule.WEIGHT_ALREADY_APPLICATION_BUG));
     }
 }

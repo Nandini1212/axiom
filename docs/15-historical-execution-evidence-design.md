@@ -7,9 +7,9 @@ once built: `02-system-architecture.md`'s Module Reference section.
 
 ## 1. Context
 
-Every rule so far (`ApplicationBugCorrelationRule`, `InfrastructureFailureRule`, `FlakyTestRule`)
+Every rule so far (`ApplicationBugCorrelationRule`, `InfrastructureFailureRule`, `TransientFailureRule`)
 reasons from a single execution: this failure's message, stack trace, one changed-file summary,
-one retry outcome. `FlakyTestRule`'s own javadoc already names the gap this closes: it can only
+one retry outcome. `TransientFailureRule`'s own javadoc already names the gap this closes: it can only
 say "this failure appears transient in this execution," never "this test is known to be flaky,"
 because no evidence source describes behavior across multiple runs. This is the smallest
 architectural step that unlocks a genuinely new kind of conclusion without adding a live
@@ -217,7 +217,7 @@ scope here).
 both map to `FailureCategory.FLAKY_TEST`, but with distinct rule IDs, evidence trails, and wording.
 "Retry passed this run" and "this test has repeatedly alternated between pass and fail" are
 different claims with different evidentiary weight; collapsing them into one rule's contribution
-list would blur exactly the distinction `FlakyTestRule`'s own javadoc was written to preserve.
+list would blur exactly the distinction `TransientFailureRule`'s own javadoc was written to preserve.
 
 **This is the trigger the backlog already named.** `07-roadmap.md`'s backlog entry for this exact
 rename says: *"Not renaming now — consistency with the classifier's naming has its own value, and
@@ -239,7 +239,7 @@ directly. With two rules able to produce the same category, three options exist:
 3. Select the single strongest rule per category, discarding the other's contribution entirely.
 
 **Adopted: option 2, per review** — keep each rule's evaluation separate during scoring (so
-`FlakyTestRuleTest`/`HistoricalFlakyTestRuleTest`-style direct unit tests keep working unchanged),
+`TransientFailureRuleTest`/`HistoricalFlakyTestRuleTest`-style direct unit tests keep working unchanged),
 but aggregate same-category results into one hypothesis *before* cross-category selection.
 Rejected option 1: two rules that both point at `FLAKY_TEST` would needlessly compete with each
 other under the minimum-lead rule, potentially forcing `NEEDS_INVESTIGATION` even when both rules

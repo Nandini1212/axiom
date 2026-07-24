@@ -15,25 +15,27 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * The third root-cause rule — and a narrower claim than its name suggests. This rule identifies a
- * <b>single-run transient failure</b>, not historical flakiness: Axiom has no evidence source for
- * behavior across multiple runs today (no {@code FAILED_IN_MULTIPLE_RECENT_RUNS}-style signal
- * exists), so "this test is known to be flaky" is not a claim this rule is entitled to make.
- * {@code FailureCategory.FLAKY_TEST} is reused for taxonomy compatibility with the deterministic
- * classifier, but the presentation layer must phrase the result as "this failure appears
+ * The third root-cause rule — renamed from {@code FlakyTestRule} once a second, genuinely
+ * historical rule ({@code HistoricalFlakyTestRule}) existed to distinguish itself from. This rule
+ * identifies a <b>single-run transient failure</b> from this execution's own retry evidence alone
+ * — not historical flakiness, which needs a track record across runs this rule has no access to.
+ * {@code FailureCategory.FLAKY_TEST} is still reused for taxonomy compatibility with the
+ * deterministic classifier (both this rule and {@code HistoricalFlakyTestRule} conclude the same
+ * category, from different evidence — see {@code AssessmentSelector}'s same-category
+ * aggregation), but the presentation layer phrases the result as "this failure appears
  * transient," never "this test is flaky" — see {@code AssessmentFacts}.
  * <p>
  * Reasons largely by elimination — not code (no stack match), not infrastructure (no cluster),
- * and it un-failed on retry — which is epistemically weaker than the other two rules' direct
- * positive evidence (a stack match, a failure cluster). That's reflected in the confidence ceiling
- * (0.85, same numeric ceiling as the others, but reached only by stacking four modest
- * contributions rather than one or two strong ones) and in treating an actual code correlation as
- * a hard veto: a real, intermittent application bug can still pass on retry, so a changed
- * production file matching the stack frame must not be waved away as "probably flaky."
+ * and it un-failed on retry — which is epistemically weaker than the other rules' direct positive
+ * evidence (a stack match, a failure cluster). That's reflected in the confidence ceiling (0.85,
+ * same numeric ceiling as the others, but reached only by stacking four modest contributions
+ * rather than one or two strong ones) and in treating an actual code correlation as a hard veto: a
+ * real, intermittent application bug can still pass on retry, so a changed production file
+ * matching the stack frame must not be waved away as "probably transient."
  */
-public final class FlakyTestRule implements CorrelationRule {
+public final class TransientFailureRule implements CorrelationRule {
 
-    public static final String RULE_ID = "flaky-test-v1";
+    public static final String RULE_ID = "transient-failure-v1";
 
     static final double WEIGHT_RETRY_PASSED = 0.45;
     static final double WEIGHT_ALREADY_FLAKY_TEST = 0.20;
