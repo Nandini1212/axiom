@@ -85,6 +85,13 @@ occurrence, not the logical test. Known, accepted limitation for v0.1: parameter
 tests sharing the same `className`+`testName`, and renamed/moved tests, don't have a distinguishing
 identity under this scheme — documented, not solved here.
 
+**Extension point, reserved but not built**: version 1 intentionally defines identity as
+`className`+`testName` only. Future schema versions may extend `TestIdentity` with additional
+identity components (e.g. a parameterized-test discriminator) without breaking existing equality
+semantics for the tests that don't need one — this is a documented reservation of intent, not an
+implementation. Recorded here specifically so the `className`+`testName`-only limitation reads as
+a deliberate v1 boundary if revisited later, not as something nobody thought about.
+
 ## 4. Evidence model
 
 ```java
