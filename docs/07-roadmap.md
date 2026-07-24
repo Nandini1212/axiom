@@ -171,6 +171,20 @@ From the current architecture's own long-term vision:
   `FailureCategory.FLAKY_TEST` for taxonomy compatibility while each rule name honestly describes
   which evidence produced the hypothesis. See `docs/15-historical-execution-evidence-design.md`
   §10 for the rationale and sequencing.
+- **Phase X — Multi-Failure Investigation**: today, `ReportEvidenceReader`
+  (`axiom-investigation-file`) requires exactly one failure per report — a report with zero or
+  more than one failure produces a warning rather than a guess at which one to investigate. This
+  is a capability boundary, not a domain rule that a multi-failure report is invalid: a PR failing
+  three unrelated tests is legitimately still one engineering event
+  (`16-investigation-domain-model.md` §3). Reasoning across several simultaneous failures needs
+  its own design effort before it can be built, since every existing `CorrelationRule` currently
+  finds its test failure via `.findFirst()` — an explicitly unresolved question since
+  `13-evidence-correlation-design.md` §18. Goals for that future design, not decided now:
+  - Support one Investigation containing multiple `FailureEvent`s
+  - Introduce cross-failure signals (e.g. "N unrelated tests failed together")
+  - Detect shared root causes across those failures
+  - Aggregate individual per-failure assessments into one conclusion
+  - Preserve deterministic reasoning throughout — no LLM-driven correlation, same as today
 
 ## Phase 2+ Ideas Retained From Earlier Product Exploration
 Not yet scheduled, but worth revisiting once the deterministic core (through 1.0) is proven —

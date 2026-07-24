@@ -22,6 +22,9 @@ public final class ExecutionEvidenceReader {
         List<CollectionWarning> warnings = new ArrayList<>();
         Optional<ExecutionInput> input =
             JsonFileReading.readOrWarn(executionPath, ExecutionInput.class, collectorId, warnings);
+        // "execution-1" is a constant, not a shortcut: ExecutionInput carries no run/workflow id
+        // today (just retryAttempted/retryPassed/relatedFailureCount) to derive a stable id from.
+        // Revisit once ExecutionInput gains one, rather than inventing an id that doesn't exist.
         Optional<ExecutionEvidence> evidence = input.map(i ->
             ExecutionEvidence.from("execution-1", clock.instant(), i));
         return new ExecutionReadResult(evidence, warnings);

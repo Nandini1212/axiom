@@ -25,12 +25,16 @@ import java.util.Optional;
  * Reads {@code report.xml} into exactly one {@link TestFailureEvidence} — reuses the existing,
  * unchanged {@link Analyzer} (parser + classifier) rather than reimplementing either.
  * <p>
- * An Investigation is scoped to exactly one engineering event
- * ({@code 16-investigation-domain-model.md} §3), so a report containing zero or more than one
- * failure is an operational problem (a warning) rather than a guess at which failure was meant —
- * this is a real, currently-unresolved constraint shared by every {@code CorrelationRule} today
- * (each finds its test failure via {@code .findFirst()}), not something invented by this reader.
- * See {@code 13-evidence-correlation-design.md} §18.
+ * <b>Multi-failure reports are not yet supported, not rejected as invalid.</b> A PR failing three
+ * unrelated tests is legitimately still one engineering event; this reader just can't represent
+ * that yet, because every existing {@code CorrelationRule} finds its test failure via
+ * {@code evidence.stream().filter(TEST_FAILURE).findFirst()} — reasoning over several
+ * simultaneous failures needs those rules (and {@code RootCauseAssessment}) redesigned first, an
+ * explicitly open question since {@code 13-evidence-correlation-design.md} §18. Until that
+ * redesign happens, a report with zero or more than one failure produces a warning naming the gap
+ * rather than guessing which failure was meant — a capability boundary, not a domain rule that a
+ * multi-failure report is somehow wrong. Revisit this reader once multi-failure investigations are
+ * designed, not before.
  */
 public final class ReportEvidenceReader {
 
@@ -73,8 +77,9 @@ public final class ReportEvidenceReader {
         }
         if (failures.size() > 1) {
             warnings.add(warning(collectorId, "Report " + reportPath + " contained " + failures.size()
-                + " failures; an Investigation analyzes exactly one engineering event"
-                + " (16-investigation-domain-model.md §3) -- none investigated"));
+                + " failures; multi-failure investigations are not yet supported (would require"
+                + " redesigning how CorrelationRule/RootCauseAssessment reason across several"
+                + " failures, see 13-evidence-correlation-design.md §18) -- none investigated"));
             return new ReportReadResult(Optional.empty(), Optional.empty(), warnings);
         }
 
