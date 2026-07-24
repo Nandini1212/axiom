@@ -1,0 +1,4 @@
+{
+  "commitSha": "abc123",
+  "changedFiles": ["src/main/java/com/example/LoginService.java"]
+}

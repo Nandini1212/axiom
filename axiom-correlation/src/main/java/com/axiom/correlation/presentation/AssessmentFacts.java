@@ -1,6 +1,7 @@
 package com.axiom.correlation.presentation;
 
 import com.axiom.classifier.model.FailureCategory;
+import com.axiom.common.model.FailureEvent;
 import com.axiom.correlation.model.AssessmentDisposition;
 import com.axiom.correlation.model.ConfidenceContribution;
 import com.axiom.correlation.model.CorrelationEvidence;
@@ -9,6 +10,7 @@ import com.axiom.correlation.model.RootCauseAssessment;
 import com.axiom.correlation.model.RootCauseHypothesis;
 import com.axiom.correlation.model.SourceChangeEvidence;
 import com.axiom.correlation.model.TestFailureEvidence;
+import com.axiom.correlation.model.TestIdentity;
 
 import java.util.Comparator;
 import java.util.List;
@@ -41,7 +43,7 @@ record AssessmentFacts(
         Optional<RootCauseHypothesis> top = assessment.rankedHypotheses().stream().findFirst();
 
         String recommendedAction = assessment.disposition() == AssessmentDisposition.DETERMINED
-            ? recommendedActionForDetermined(evidence)
+            ? recommendedActionForDetermined(top.orElseThrow().category(), evidence)
             : recommendedActionForAbstention(assessment);
 
         return new AssessmentFacts(
@@ -68,13 +70,31 @@ record AssessmentFacts(
             .orElse("(unknown test)");
     }
 
+    /**
+     * Primary path goes through {@link TestIdentity} — the same type historical-evidence matching
+     * will use — rather than re-deriving this independently. {@link TestIdentity#canonicalName()}
+     * is not used here: that format is for matching/machine use, not display; this method derives
+     * its own short display form (simple class name + testName) from the same two fields.
+     */
     private static String describeTest(TestFailureEvidence testFailure) {
-        String testName = testFailure.failureEvent().testName();
-        String simpleClassName = simpleName(testFailure.failureEvent().className());
-        if (testName != null && simpleClassName != null) {
-            return simpleClassName + "." + testName;
+        FailureEvent event = testFailure.failureEvent();
+        return TestIdentity.from(event)
+            .map(identity -> simpleName(identity.className()) + "." + identity.testName())
+            .orElseGet(() -> describeTestFallback(event));
+    }
+
+    /**
+     * Reached only when {@link TestIdentity#from} can't build an identity (a suite-level failure
+     * with no individual test method, or only one of className/testName present) — falls back to
+     * whichever identifying field {@code FailureEvent} actually has.
+     */
+    private static String describeTestFallback(FailureEvent event) {
+        String testName = event.testName();
+        String simpleClassName = simpleName(event.className());
+        if (testName != null && !testName.isBlank()) {
+            return testName;
         }
-        return testName != null ? testName : (simpleClassName != null ? simpleClassName : "(unknown test)");
+        return simpleClassName != null ? simpleClassName : "(unknown test)";
     }
 
     private static String simpleName(String fullyQualifiedClassName) {
@@ -109,10 +129,25 @@ record AssessmentFacts(
             .findFirst();
     }
 
-    private static String recommendedActionForDetermined(List<CorrelationEvidence> evidence) {
-        return changedFile(evidence)
-            .map(file -> "Review the recent changes in " + file + ".")
-            .orElse("Review the recent code changes associated with this failure.");
+    /**
+     * Category-aware: found while adding a third determinable category
+     * ({@code FLAKY_TEST}) that this previously assumed every determined hypothesis was an
+     * application bug and always recommended reviewing a changed file — nonsensical advice for an
+     * infrastructure or flaky-test verdict, where (for flaky specifically) the whole point of the
+     * hypothesis is that no such file correlation exists.
+     */
+    private static String recommendedActionForDetermined(
+            FailureCategory category, List<CorrelationEvidence> evidence) {
+        return switch (category) {
+            case APPLICATION_BUG -> changedFile(evidence)
+                .map(file -> "Review the recent changes in " + file + ".")
+                .orElse("Review the recent code changes associated with this failure.");
+            case INFRASTRUCTURE_FAILURE ->
+                "Check the health of dependent services and infrastructure around the time of this failure.";
+            case FLAKY_TEST -> "This failure appears transient within this execution. Re-run the "
+                + "test to confirm, and monitor for repeated occurrences before treating it as a stable defect.";
+            default -> "Review the evidence associated with this failure.";
+        };
     }
 
     /**
@@ -150,7 +185,9 @@ record AssessmentFacts(
             case CONFIGURATION_FAILURE -> "Configuration issue";
             case DATA_ISSUE -> "Data issue";
             case DEPENDENCY_FAILURE -> "Dependency issue";
-            case FLAKY_TEST -> "Possibly flaky test";
+            // Deliberately not "This test is flaky" — Axiom has no historical-run evidence
+            // source today, so it can only observe this execution's failure, not a track record.
+            case FLAKY_TEST -> "Possibly flaky (this run)";
             case UNKNOWN -> "Unknown";
         };
     }

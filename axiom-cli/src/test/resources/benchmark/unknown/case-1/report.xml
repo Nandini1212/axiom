@@ -1,0 +1,5 @@
+<testsuite name="MiscTest">
+  <testcase name="shouldDoSomething" classname="com.example.MiscTest" time="0.1">
+    <failure message="AssertionError: expected true but was false">at com.example.MiscTest.shouldDoSomething(MiscTest.java:22)</failure>
+  </testcase>
+</testsuite>

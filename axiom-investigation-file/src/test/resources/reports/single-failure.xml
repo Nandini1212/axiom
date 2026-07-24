@@ -1,0 +1,5 @@
+<testsuite name="LoginTest">
+  <testcase name="shouldLogin" classname="com.example.LoginTest" time="0.1">
+    <failure message="Connection refused">stack</failure>
+  </testcase>
+</testsuite>

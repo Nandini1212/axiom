@@ -60,6 +60,13 @@ public final class AxiomCli {
      * controlled environment map instead of mutating the real process environment.
      */
     static int run(String[] args, PrintStream out, PrintStream err, Map<String, String> env) {
+        if (args.length > 0 && "investigate".equals(args[0])) {
+            return InvestigateCommand.run(Arrays.copyOfRange(args, 1, args.length), out, err);
+        }
+        if (args.length > 0 && "benchmark".equals(args[0])) {
+            return BenchmarkCommand.run(Arrays.copyOfRange(args, 1, args.length), out, err);
+        }
+
         boolean aiEnabled = args.length > 0 && "--ai".equals(args[0]);
         String[] positional = aiEnabled ? Arrays.copyOfRange(args, 1, args.length) : args;
 
@@ -93,7 +100,8 @@ public final class AxiomCli {
         return aiEnabled ? wrapWithAi(deterministic, env) : deterministic;
     }
 
-    private static DeterministicAnalyzer createDeterministicAnalyzer(Path rulesPath) {
+    /** Package-private so {@link InvestigateCommand} reuses the same classifier wiring. */
+    static DeterministicAnalyzer createDeterministicAnalyzer(Path rulesPath) {
         List<RuleDefinition> definitions = new YamlRuleSource(rulesPath).loadRules();
         RuleProcessor ruleProcessor = new DefaultRuleProcessor();
         List<PreparedRule> prepared = ruleProcessor.process(definitions);

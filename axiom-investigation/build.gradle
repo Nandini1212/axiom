@@ -1,0 +1,9 @@
+dependencies {
+    // InvestigationContext wraps PipelineContext (axiom-common); InvestigationRunner orchestrates
+    // the existing, unchanged CorrelationEngine (axiom-correlation) — see
+    // docs/17-investigation-architecture.md. Deliberately no dependency on axiom-parser,
+    // axiom-classifier, or axiom-analyzer here: this module orchestrates evidence collection and
+    // correlation, it does not parse reports or classify failures itself.
+    implementation project(':axiom-common')
+    implementation project(':axiom-correlation')
+}

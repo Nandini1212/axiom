@@ -22,5 +22,30 @@ public enum SignalType {
      * signal (e.g. {@code UNRELATED_TESTS_SHARE_COMMON_INFRA_FAILURE}) can be derived later once
      * Axiom can actually compare services/packages/ownership across failures.
      */
-    FAILURE_CLUSTER_PRESENT
+    FAILURE_CLUSTER_PRESENT,
+
+    // --- Historical execution signals (docs/15-historical-execution-evidence-design.md §9) ---
+    // The first two are *context* signals — they describe the sample itself, not its shape.
+    // The three after them describe *outcome shape* and are meaningless without knowing the
+    // sample is non-trivial (see HISTORICAL_ALWAYS_PASSED/FAILED's vacuous-truth guard).
+
+    /** At least one historical run exists at all — a pure context fact, no threshold involved. */
+    HISTORICAL_EXECUTION_PRESENT,
+
+    /**
+     * Run count meets {@link HistoricalExecutionPolicy#MINIMUM_USABLE_RUNS} — the one signal in
+     * this set that encodes a policy threshold rather than a raw observation. Kept as its own
+     * signal (not folded into the others) so a rule can require a sufficient sample independently
+     * of what that sample shows.
+     */
+    HISTORICAL_SAMPLE_SUFFICIENT,
+
+    /** At least one PASSED and at least one FAILED run exist in the sample. */
+    HISTORICAL_MIXED_OUTCOMES,
+
+    /** Sample is non-empty and every run PASSED — never true for an empty sample. */
+    HISTORICAL_ALWAYS_PASSED,
+
+    /** Sample is non-empty and every run FAILED — never true for an empty sample. */
+    HISTORICAL_ALWAYS_FAILED
 }

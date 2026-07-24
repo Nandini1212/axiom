@@ -9,13 +9,26 @@ application {
 
 dependencies {
     // The composition root: wires the parser, rule loading/processing, engine, strategy, and
-    // analyzer together. Depends on every module below the still-unbuilt reporting/GitHub layer.
+    // analyzer together (the classic command), plus the Investigation pipeline (the `investigate`
+    // subcommand, InvestigateCommand) -- axiom-correlation/axiom-investigation/
+    // axiom-investigation-file added back now that axiom-cli actually invokes InvestigationRunner.
     implementation project(':axiom-common')
     implementation project(':axiom-classifier')
     implementation project(':axiom-parser')
     implementation project(':axiom-analyzer')
+    implementation project(':axiom-correlation')
+    implementation project(':axiom-investigation')
+    implementation project(':axiom-investigation-file')
 
     // axiom-cli constructs the AnthropicClient itself (composition root) — axiom-analyzer's own
     // dependency on this is `implementation`, not transitively exposed, so it's declared here too.
     implementation 'com.anthropic:anthropic-java:2.34.0'
+
+    // BenchmarkCommand deserializes expected-assessment.json fixtures. jdk8 module is required
+    // for ExpectedAssessment's Optional<FailureCategory> category field.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.1'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.1'
 }

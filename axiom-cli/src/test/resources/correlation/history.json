@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1",
+  "generatedAt": "2026-07-20T00:00:00Z",
+  "branch": "main",
+  "tests": [
+    {
+      "className": "com.example.LoginTest",
+      "testName": "shouldLogin",
+      "runs": [
+        {"runId": "run-1", "timestamp": "2026-07-18T00:00:00Z", "outcome": "PASSED"},
+        {"runId": "run-2", "timestamp": "2026-07-19T00:00:00Z", "outcome": "FAILED"}
+      ]
+    }
+  ]
+}

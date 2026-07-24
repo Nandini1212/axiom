@@ -8,6 +8,8 @@ import com.axiom.common.model.SourceFormat;
 import com.axiom.correlation.engine.ApplicationBugCorrelationRule;
 import com.axiom.correlation.engine.CorrelationEngine;
 import com.axiom.correlation.engine.CorrelationRule;
+import com.axiom.correlation.engine.InfrastructureFailureRule;
+import com.axiom.correlation.engine.TransientFailureRule;
 import com.axiom.correlation.model.ChangeSetInput;
 import com.axiom.correlation.model.CorrelationEvidence;
 import com.axiom.correlation.model.ExecutionEvidence;
@@ -17,6 +19,7 @@ import com.axiom.correlation.model.RootCauseAssessment;
 import com.axiom.correlation.model.SourceChangeEvidence;
 import com.axiom.correlation.model.TestFailureEvidence;
 import com.axiom.correlation.signal.ChangeSetEvidenceMissingExtractor;
+import com.axiom.correlation.signal.FailureClusterPresentExtractor;
 import com.axiom.correlation.signal.RetryOutcomeExtractor;
 import com.axiom.correlation.signal.SignalExtractor;
 import com.axiom.correlation.signal.StackFrameMatchesChangedFileExtractor;
@@ -27,6 +30,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Golden-output (exact-string) tests for {@link TextAssessmentRenderer} — the same discipline
@@ -45,6 +49,19 @@ class TextAssessmentRendererTest {
             new RetryOutcomeExtractor(),
             new ChangeSetEvidenceMissingExtractor());
         List<CorrelationRule> rules = List.of(new ApplicationBugCorrelationRule());
+        return new CorrelationEngine(extractors, rules);
+    }
+
+    /** Separate from {@link #engine()} so existing fixtures above stay unaffected. */
+    private static CorrelationEngine engineWithAllRules() {
+        List<SignalExtractor> extractors = List.of(
+            new StackFrameMatchesChangedFileExtractor(),
+            new TopFrameIsTestCodeExtractor(),
+            new RetryOutcomeExtractor(),
+            new ChangeSetEvidenceMissingExtractor(),
+            new FailureClusterPresentExtractor());
+        List<CorrelationRule> rules = List.of(
+            new ApplicationBugCorrelationRule(), new InfrastructureFailureRule(), new TransientFailureRule());
         return new CorrelationEngine(extractors, rules);
     }
 
@@ -67,8 +84,13 @@ class TextAssessmentRendererTest {
     }
 
     private static ExecutionEvidence executionEvidence(boolean retryAttempted, boolean retryPassed) {
+        return executionEvidence(retryAttempted, retryPassed, 0);
+    }
+
+    private static ExecutionEvidence executionEvidence(
+            boolean retryAttempted, boolean retryPassed, int relatedFailureCount) {
         return ExecutionEvidence.from(
-            "evidence-execution", NOW, new ExecutionInput(retryAttempted, retryPassed, 0));
+            "evidence-execution", NOW, new ExecutionInput(retryAttempted, retryPassed, relatedFailureCount));
     }
 
     @Test
@@ -211,5 +233,74 @@ class TextAssessmentRendererTest {
 
         assertEquals(firstSummary, secondSummary);
         assertEquals(firstDetailed, secondDetailed);
+    }
+
+    @Test
+    void determinedInfrastructureFailureUsesInfrastructureSpecificAction() {
+        // Proves AssessmentFacts.recommendedActionForDetermined is category-aware: before this
+        // fix, every DETERMINED verdict rendered an application-bug-shaped "review changes in X"
+        // recommendation regardless of which category actually won.
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.INFRASTRUCTURE_FAILURE),
+            executionEvidence(true, true, 1));
+        RootCauseAssessment assessment = engineWithAllRules().assess(evidence);
+
+        String expected = String.join("\n",
+            "PaymentServiceTest.testCharge",
+            "",
+            "Likely cause: Infrastructure issue",
+            "Confidence: High - 85%",
+            "",
+            "Why Axiom thinks this:",
+            "- Existing deterministic classification is already INFRASTRUCTURE_FAILURE",
+            "- Failure cluster present",
+            "- Retry passed",
+            "",
+            "Evidence against: none",
+            "",
+            "Recommended next step:",
+            "Check the health of dependent services and infrastructure around the time of this failure.",
+            "",
+            "Result: Root cause determined");
+
+        assertEquals(expected, renderer.renderSummary(assessment, evidence));
+    }
+
+    @Test
+    void determinedFlakyTestUsesCautiousWordingNotAHistoricalClaim() {
+        List<CorrelationEvidence> evidence = List.of(
+            testFailureEvidence(
+                "at com.example.PaymentService.charge(PaymentService.java:42)",
+                FailureCategory.FLAKY_TEST),
+            executionEvidence(true, true));
+        RootCauseAssessment assessment = engineWithAllRules().assess(evidence);
+
+        String expected = String.join("\n",
+            "PaymentServiceTest.testCharge",
+            "",
+            "Likely cause: Possibly flaky (this run)",
+            "Confidence: High - 85%",
+            "",
+            "Why Axiom thinks this:",
+            "- Retry passed",
+            "- Existing deterministic classification is already FLAKY_TEST",
+            "- No stack frame correlates with a changed file",
+            "",
+            "Evidence against: none",
+            "",
+            "Recommended next step:",
+            "This failure appears transient within this execution. Re-run the test to confirm, "
+                + "and monitor for repeated occurrences before treating it as a stable defect.",
+            "",
+            "Result: Root cause determined");
+
+        String actual = renderer.renderSummary(assessment, evidence);
+        assertEquals(expected, actual);
+
+        // The one wording constraint this rule/renderer combination must never violate.
+        assertFalse(actual.toLowerCase(java.util.Locale.ROOT).contains("this test is flaky"));
+        assertFalse(actual.toLowerCase(java.util.Locale.ROOT).contains("known to be flaky"));
     }
 }

@@ -5,6 +5,8 @@ include 'axiom-classifier'
 include 'axiom-parser'
 include 'axiom-analyzer'
 include 'axiom-correlation'
+include 'axiom-investigation'
+include 'axiom-investigation-file'
 include 'axiom-cli'
 
 // Future modules, added as each is implemented and reviewed:

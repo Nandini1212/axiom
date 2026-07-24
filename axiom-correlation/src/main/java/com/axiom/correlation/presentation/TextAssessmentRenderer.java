@@ -81,8 +81,8 @@ public final class TextAssessmentRenderer implements AssessmentRenderer {
 
         int index = 1;
         for (RootCauseHypothesis hypothesis : assessment.rankedHypotheses()) {
-            out.append("Hypothesis ").append(index++).append(" [rule: ")
-                .append(hypothesis.matchedReasoningPath()).append("]\n");
+            out.append("Hypothesis ").append(index++).append(" [")
+                .append(formatReasoningPaths(hypothesis.matchedReasoningPaths())).append("]\n");
             out.append("  Category: ").append(hypothesis.category()).append('\n');
             out.append("  Confidence: ")
                 .append(String.format(Locale.ROOT, "%.2f", hypothesis.confidence())).append('\n');
@@ -113,5 +113,12 @@ public final class TextAssessmentRenderer implements AssessmentRenderer {
 
     private static String formatWeight(double weight) {
         return (weight >= 0 ? "+" : "") + String.format(Locale.ROOT, "%.2f", weight);
+    }
+
+    /** Singular "rule:" for one contributing rule, plural "rules:" once aggregation combines more. */
+    private static String formatReasoningPaths(List<String> ruleIds) {
+        return ruleIds.size() == 1
+            ? "rule: " + ruleIds.get(0)
+            : "rules: " + String.join(", ", ruleIds);
     }
 }

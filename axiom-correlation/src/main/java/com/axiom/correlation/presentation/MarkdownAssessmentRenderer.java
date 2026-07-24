@@ -87,8 +87,8 @@ public final class MarkdownAssessmentRenderer implements AssessmentRenderer {
 
         int index = 1;
         for (RootCauseHypothesis hypothesis : assessment.rankedHypotheses()) {
-            out.append("### Hypothesis ").append(index++).append(" — rule `")
-                .append(hypothesis.matchedReasoningPath()).append("`\n\n");
+            out.append("### Hypothesis ").append(index++).append(" — ")
+                .append(formatReasoningPaths(hypothesis.matchedReasoningPaths())).append("\n\n");
             out.append("- **Category:** ").append(hypothesis.category()).append('\n');
             out.append("- **Confidence:** ")
                 .append(String.format(Locale.ROOT, "%.2f", hypothesis.confidence())).append("\n\n");
@@ -122,5 +122,13 @@ public final class MarkdownAssessmentRenderer implements AssessmentRenderer {
 
     private static String formatWeight(double weight) {
         return (weight >= 0 ? "+" : "") + String.format(Locale.ROOT, "%.2f", weight);
+    }
+
+    /** Singular "rule `X`" for one contributing rule, plural once aggregation combines more. */
+    private static String formatReasoningPaths(List<String> ruleIds) {
+        if (ruleIds.size() == 1) {
+            return "rule `" + ruleIds.get(0) + "`";
+        }
+        return "rules " + ruleIds.stream().map(id -> "`" + id + "`").collect(java.util.stream.Collectors.joining(", "));
     }
 }

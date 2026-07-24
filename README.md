@@ -144,7 +144,7 @@ Test failure + source change + execution evidence
     ↓
 Signal extraction
     ↓
-Competing correlation rules (ApplicationBugCorrelationRule, InfrastructureFailureRule)
+Competing correlation rules (ApplicationBugCorrelationRule, InfrastructureFailureRule, TransientFailureRule)
     ↓
 AssessmentSelector (confidence threshold + minimum lead over the runner-up + blocking checks)
     ↓
@@ -198,11 +198,12 @@ forgotten — see `docs/13-evidence-correlation-design.md` and `docs/07-roadmap.
   optional AI-generated explanation (`ClaudeProvider`) layered on top without changing the
   classification — verified against the real Anthropic API, not just mocked tests
 - `axiom-correlation` — multi-signal root-cause correlation (`ApplicationBugCorrelationRule`,
-  `InfrastructureFailureRule`), deterministic confidence scoring, and text/Markdown presentation.
-  A library today — no CLI entry point yet (see above)
+  `InfrastructureFailureRule`, `TransientFailureRule`), deterministic confidence scoring, and
+  text/Markdown presentation. A library today — no CLI entry point yet (see above)
 - `axiom-cli` — the `axiom [--ai] <rules.yaml> <report.xml>` command shown above
 
-See `docs/07-roadmap.md` for what's next and why (the next correlation rule is a flaky-test rule).
+See `docs/07-roadmap.md` for what's next and why (the next correlation rule targets test-automation
+failures).
 
 ## Running tests
 
