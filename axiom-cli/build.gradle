@@ -14,8 +14,22 @@ dependencies {
     implementation project(':axiom-classifier')
     implementation project(':axiom-parser')
     implementation project(':axiom-analyzer')
+    implementation project(':axiom-correlation')
+    implementation project(':axiom-investigation')
 
     // axiom-cli constructs the AnthropicClient itself (composition root) — axiom-analyzer's own
     // dependency on this is `implementation`, not transitively exposed, so it's declared here too.
     implementation 'com.anthropic:anthropic-java:2.34.0'
+
+    // FileEvidenceCollector deserializes changes.json/execution.json/history.json -- deliberately
+    // deferred everywhere else in axiom-correlation ("future CLI wiring") until this module.
+    // jdk8 module is required for HistoryInput's Optional<String> branch field; jsr310 for the
+    // Instant fields across all three input DTOs.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.1'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
 }
