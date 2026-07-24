@@ -63,6 +63,9 @@ public final class AxiomCli {
         if (args.length > 0 && "investigate".equals(args[0])) {
             return InvestigateCommand.run(Arrays.copyOfRange(args, 1, args.length), out, err);
         }
+        if (args.length > 0 && "benchmark".equals(args[0])) {
+            return BenchmarkCommand.run(Arrays.copyOfRange(args, 1, args.length), out, err);
+        }
 
         boolean aiEnabled = args.length > 0 && "--ai".equals(args[0]);
         String[] positional = aiEnabled ? Arrays.copyOfRange(args, 1, args.length) : args;

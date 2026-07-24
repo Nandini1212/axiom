@@ -79,7 +79,8 @@ final class InvestigateCommand {
         }
     }
 
-    private static CorrelationEngine createCorrelationEngine() {
+    /** Package-private so {@link BenchmarkCommand} reuses the same engine wiring. */
+    static CorrelationEngine createCorrelationEngine() {
         List<SignalExtractor> extractors = List.of(
             new StackFrameMatchesChangedFileExtractor(),
             new TopFrameIsTestCodeExtractor(),

@@ -1,0 +1,6 @@
+<testsuite name="PaymentServiceTest">
+  <testcase name="shouldProcessPayment" classname="com.example.PaymentServiceTest" time="0.2">
+    <failure message="NullPointerException in validator">at com.example.PaymentValidator.validate(PaymentValidator.java:42)
+at com.example.PaymentServiceTest.shouldProcessPayment(PaymentServiceTest.java:10)</failure>
+  </testcase>
+</testsuite>

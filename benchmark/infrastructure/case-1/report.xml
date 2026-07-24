@@ -1,0 +1,6 @@
+<testsuite name="LoginTest">
+  <testcase name="shouldLogin" classname="com.example.LoginTest" time="0.1">
+    <failure message="Connection refused">at com.example.NetworkClient.connect(NetworkClient.java:20)
+at com.example.LoginTest.shouldLogin(LoginTest.java:15)</failure>
+  </testcase>
+</testsuite>

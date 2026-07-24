@@ -1,0 +1,5 @@
+<testsuite name="RetrySuiteTest">
+  <testcase name="shouldSometimesFail" classname="com.example.RetrySuiteTest" time="0.1">
+    <failure message="Intermittent assertion failure">at com.example.RetrySuiteTest.shouldSometimesFail(RetrySuiteTest.java:8)</failure>
+  </testcase>
+</testsuite>

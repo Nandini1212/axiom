@@ -1,0 +1,33 @@
+rules:
+  - id: null-pointer-application-bug
+    priority: 100
+    match:
+      any:
+        - field: message
+          operator: contains
+          value: "NullPointerException"
+    classification:
+      category: APPLICATION_BUG
+      confidence: 0.9
+
+  - id: connection-refused-infrastructure
+    priority: 100
+    match:
+      any:
+        - field: message
+          operator: contains
+          value: "Connection refused"
+    classification:
+      category: INFRASTRUCTURE_FAILURE
+      confidence: 0.95
+
+  - id: known-flaky-test
+    priority: 100
+    match:
+      any:
+        - field: test_name
+          operator: equals
+          value: "shouldSometimesFail"
+    classification:
+      category: FLAKY_TEST
+      confidence: 0.6
