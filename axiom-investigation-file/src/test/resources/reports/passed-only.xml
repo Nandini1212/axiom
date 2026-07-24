@@ -1,0 +1,3 @@
+<testsuite name="SmokeTest">
+  <testcase name="shouldPass" classname="com.example.SmokeTest" time="0.1"/>
+</testsuite>

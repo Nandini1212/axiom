@@ -1,0 +1,22 @@
+dependencies {
+    // FileEvidenceCollector needs the real parser+classifier pipeline (via Analyzer) to turn
+    // report.xml into a FailureAnalysisInput -- exactly why this is its own module rather than
+    // living in axiom-investigation, which deliberately excludes those dependencies.
+    implementation project(':axiom-common')
+    implementation project(':axiom-classifier')
+    implementation project(':axiom-parser')
+    implementation project(':axiom-analyzer')
+    implementation project(':axiom-correlation')
+    implementation project(':axiom-investigation')
+
+    // Deserializes changes.json/execution.json/history.json -- deliberately deferred everywhere
+    // else in axiom-correlation ("future CLI wiring") until this module. jdk8 module is required
+    // for HistoryInput's Optional<String> branch field; jsr310 for the Instant fields.
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.1'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
+
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.17.1'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.17.1'
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
+}

@@ -1,4 +1,4 @@
-package com.axiom.cli.investigation;
+package com.axiom.investigation.file;
 
 import com.axiom.analyzer.Analyzer;
 import com.axiom.analyzer.DeterministicAnalyzer;
@@ -6,12 +6,12 @@ import com.axiom.classifier.engine.ClassificationStrategy;
 import com.axiom.classifier.engine.DefaultRuleEngine;
 import com.axiom.classifier.engine.DeterministicStrategy;
 import com.axiom.classifier.engine.RuleEngine;
+import com.axiom.classifier.model.FailureCategory;
 import com.axiom.classifier.rule.DefaultRuleProcessor;
 import com.axiom.classifier.rule.PreparedRule;
 import com.axiom.classifier.rule.RuleDefinition;
 import com.axiom.classifier.rule.RuleProcessor;
 import com.axiom.classifier.rule.YamlRuleSource;
-import com.axiom.classifier.model.FailureCategory;
 import com.axiom.correlation.model.CorrelationEvidence;
 import com.axiom.correlation.model.EvidenceType;
 import com.axiom.correlation.model.HistoricalExecutionEvidence;
@@ -38,10 +38,10 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Exercises {@link FileEvidenceCollector} against real files — no mocks, matching this codebase's
- * fixture-based convention throughout. Uses a real {@link DeterministicAnalyzer}, wired the same
- * way {@code AxiomCli.createDeterministicAnalyzer} wires it, since the collector's whole job is
- * orchestrating existing, unchanged components.
+ * Exercises {@link FileEvidenceCollector} end to end against real files — no mocks, matching this
+ * codebase's fixture-based convention. Per-reader behavior (malformed JSON, branch mismatch, etc.)
+ * is covered more narrowly by each {@code *EvidenceReaderTest} in the {@code reader} package; this
+ * class verifies the orchestration: the right readers run, results merge correctly.
  */
 class FileEvidenceCollectorTest {
 
