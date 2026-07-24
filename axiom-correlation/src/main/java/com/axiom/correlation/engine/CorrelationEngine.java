@@ -43,7 +43,7 @@ public final class CorrelationEngine {
         for (CorrelationRule rule : rules) {
             Optional<RuleEvaluation> evaluation = rule.evaluate(context);
             evaluation.ifPresent(ruleEvaluation -> scored.add(new ScoredEvaluation(
-                rule.id(), ruleEvaluation, HypothesisScorer.score(ruleEvaluation.contributions()))));
+                List.of(rule.id()), ruleEvaluation, HypothesisScorer.score(ruleEvaluation.contributions()))));
         }
 
         return AssessmentSelector.select(scored, missingEvidence(evidence));
