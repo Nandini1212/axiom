@@ -45,7 +45,7 @@ public final class HistoryFileAdapter {
             return new HistoryAdaptationResult(Optional.empty(), List.of());
         }
 
-        List<String> warnings = new ArrayList<>();
+        List<HistoryWarning> warnings = new ArrayList<>();
         List<HistoricalTestRun> runs = deduplicate(matchingTest.get().runs(), warnings);
 
         HistoricalExecutionEvidence evidence = new HistoricalExecutionEvidence(
@@ -68,11 +68,12 @@ public final class HistoryFileAdapter {
     }
 
     /** Keeps the first occurrence of each runId; every later duplicate produces one warning. */
-    private static List<HistoricalTestRun> deduplicate(List<HistoricalRunInput> runs, List<String> warnings) {
+    private static List<HistoricalTestRun> deduplicate(List<HistoricalRunInput> runs, List<HistoryWarning> warnings) {
         Map<String, HistoricalRunInput> byRunId = new LinkedHashMap<>();
         for (HistoricalRunInput run : runs) {
             if (byRunId.containsKey(run.runId())) {
-                warnings.add("Duplicate runId '" + run.runId() + "' in history.json - keeping first occurrence");
+                warnings.add(new HistoryWarning(
+                    run.runId(), "Duplicate runId in history.json - keeping first occurrence"));
                 continue;
             }
             byRunId.put(run.runId(), run);

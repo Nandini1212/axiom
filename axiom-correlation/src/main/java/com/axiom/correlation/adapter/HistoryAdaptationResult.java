@@ -12,11 +12,11 @@ import java.util.Optional;
  * {@link HistoryFileAdapter}) — that's a legitimate "no evidence," not an error. {@code warnings}
  * mirrors {@code ParserWarning}'s "no silent data loss" principle at this layer: today the only
  * concrete case is a duplicate {@code runId} within the matched test's runs (first occurrence
- * kept, not silently overwritten or merged). Plain strings, not a typed enum like
- * {@code ParserWarning}/{@code WarningType} — revisit only once a second concrete warning case
- * exists to inform what the type taxonomy should actually look like.
+ * kept, not silently overwritten or merged). Structured {@link HistoryWarning} values, not raw
+ * strings — a future renderer/CLI/AI-prompt consumer can use {@code runId} directly rather than
+ * parsing English sentences back apart.
  */
-public record HistoryAdaptationResult(Optional<HistoricalExecutionEvidence> evidence, List<String> warnings) {
+public record HistoryAdaptationResult(Optional<HistoricalExecutionEvidence> evidence, List<HistoryWarning> warnings) {
 
     public HistoryAdaptationResult {
         Objects.requireNonNull(evidence, "evidence is mandatory (use Optional.empty(), not null)");

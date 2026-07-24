@@ -131,7 +131,7 @@ class HistoryFileAdapterTest {
         assertEquals(1, evidence.runs().size());
         assertEquals(HistoricalOutcome.PASSED, evidence.runs().get(0).outcome());
         assertEquals(1, result.warnings().size());
-        assertTrue(result.warnings().get(0).contains("build-1042"));
+        assertEquals("build-1042", result.warnings().get(0).runId());
     }
 
     @Test
